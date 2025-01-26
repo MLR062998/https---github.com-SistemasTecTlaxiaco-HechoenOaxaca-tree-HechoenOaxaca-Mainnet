@@ -72,6 +72,11 @@ actor HechoenOaxacaBackend {
             return #err("El usuario ya está registrado con el ID: " # Principal.toText(caller));
         };
 
+        // Verificar si el rol ya está asignado
+        if (roles_table.get(caller) != null) {
+            return #err("El usuario ya tiene un rol asignado.");
+        };
+
         // Crear y registrar el usuario
         let usuario: Usuario = {
             nombreCompleto = nombreCompleto;
@@ -83,6 +88,8 @@ actor HechoenOaxacaBackend {
         usuarios_table.put(caller, usuario);
         roles_table.put(caller, parsedRol);
         balances.put(caller, 0); // Inicializa el saldo en 0
+
+        Debug.print("Usuario registrado con éxito.");
         return #ok(usuario);
     };
 
@@ -95,7 +102,7 @@ actor HechoenOaxacaBackend {
     };
 
     // Incrementar saldo
-    public shared({caller =_}) func incrementarSaldo(
+    public shared({caller = _}) func incrementarSaldo(
         principal: Principal,
         monto: Nat
     ): async Result.Result<Nat, Text> {
@@ -111,7 +118,7 @@ actor HechoenOaxacaBackend {
     };
 
     // Reducir saldo
-    public shared({caller =_}) func reducirSaldo(
+    public shared({caller = _}) func reducirSaldo(
         principal: Principal,
         monto: Nat
     ): async Result.Result<Nat, AplicationError> {
@@ -150,7 +157,7 @@ actor HechoenOaxacaBackend {
 
     // Obtener el rol del usuario
     public query func getUserRole(id: Text): async ?Text {
-        let principal = Principal.fromText(id); // Convierte el texto a Principal
+        let principal = Principal.fromText(id);
         let rol = roles_table.get(principal);
         return switch (rol) {
             case (?r) switch (r) {

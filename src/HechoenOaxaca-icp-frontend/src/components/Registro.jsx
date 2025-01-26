@@ -18,10 +18,7 @@ const Registro = ({ onRegister }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  // Configuración del agente y actor
   const agent = new HttpAgent({ host: "http://127.0.0.1:4943" });
-
-  // Solo para desarrollo: Habilita certificados autofirmados
   if (process.env.NODE_ENV === "development") {
     agent.fetchRootKey().catch((err) =>
       console.error("Error al obtener rootKey para desarrollo:", err)
@@ -61,7 +58,9 @@ const Registro = ({ onRegister }) => {
 
       if ("ok" in result) {
         console.log("Registro exitoso:", result.ok);
-        onRegister(rol);
+        if (typeof onRegister === "function") {
+          onRegister(rol);
+        }
         navigate(`/${rol}-dashboard`);
       } else {
         setError(result.err || "Error al registrar el usuario.");
@@ -90,7 +89,6 @@ const Registro = ({ onRegister }) => {
               placeholder="Ingresa tu nombre completo"
             />
           </Form.Group>
-
           <Form.Group className="mb-3" controlId="lugarOrigen">
             <Form.Label>Lugar de Origen</Form.Label>
             <Form.Control
@@ -102,7 +100,6 @@ const Registro = ({ onRegister }) => {
               placeholder="Ingresa tu lugar de origen"
             />
           </Form.Group>
-
           <Form.Group className="mb-3" controlId="telefono">
             <Form.Label>Teléfono</Form.Label>
             <Form.Control
@@ -115,7 +112,6 @@ const Registro = ({ onRegister }) => {
               placeholder="Ingresa tu número de teléfono (10 dígitos)"
             />
           </Form.Group>
-
           <Form.Group className="mb-3" controlId="rol">
             <Form.Label>Rol del usuario</Form.Label>
             <Form.Select
@@ -129,9 +125,7 @@ const Registro = ({ onRegister }) => {
               <option value="intermediario">Intermediario</option>
             </Form.Select>
           </Form.Group>
-
           {error && <p className="text-danger text-center">{error}</p>}
-
           <Button variant="primary" type="submit" className="w-100" disabled={isSubmitting}>
             {isSubmitting ? "Registrando..." : "Registrar"}
           </Button>
