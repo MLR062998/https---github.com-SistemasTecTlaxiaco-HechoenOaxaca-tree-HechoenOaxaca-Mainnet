@@ -12,6 +12,9 @@ import Home from "./components/Home";
 import Compra from "./components/Compra";
 import Registro from "./components/Registro";
 import Wallet from './components/Wallet';
+import ArtesanoDashboard from './components/Artesano';
+import ClienteDashboard from './components/Cliente';
+import IntermediarioDashboard from './components/Intermediario'; 
 
 const client = createClient({
   canisters: {
@@ -40,8 +43,14 @@ function App() {
           <Route path="/compra" element={<Compra />} />
           <Route path="/registro" element={<Registro />} />
           <Route path="/wallet" element={<Wallet />} />
-          {/* Otras rutas necesarias */}
+          <Route path="/artesano-dashboard" element={<ArtesanoDashboard />} />
+          <Route path="/cliente-dashboard" element={<ClienteDashboard />} />
+          <Route path="/intermediario-dashboard" element={<IntermediarioDashboard />} />
+          <Route path="/registro" element={<Registro />} />
         </Routes>
+
+          {/* Otras rutas necesarias */}
+        
       </Router>
     </Connect2ICProvider>
   );

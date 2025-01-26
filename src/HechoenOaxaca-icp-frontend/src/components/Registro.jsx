@@ -1,8 +1,7 @@
-// Registro.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Actor, HttpAgent } from "@dfinity/agent";
-import { idlFactory, canisterId } from "../../../declarations/HechoenOaxaca-icp-backend"; // Corrige la ruta si es diferente
+import { idlFactory, canisterId } from "../../../declarations/HechoenOaxaca-icp-backend";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import Container from "react-bootstrap/Container";
@@ -20,7 +19,15 @@ const Registro = ({ onRegister }) => {
   const navigate = useNavigate();
 
   // Configuración del agente y actor
-  const agent = new HttpAgent({ host: "http://127.0.0.1:4943" }); // Cambia el host si estás usando otro puerto
+  const agent = new HttpAgent({ host: "http://127.0.0.1:4943" });
+
+  // Solo para desarrollo: Habilita certificados autofirmados
+  if (process.env.NODE_ENV === "development") {
+    agent.fetchRootKey().catch((err) =>
+      console.error("Error al obtener rootKey para desarrollo:", err)
+    );
+  }
+
   const backendActor = Actor.createActor(idlFactory, {
     agent,
     canisterId,
@@ -33,15 +40,16 @@ const Registro = ({ onRegister }) => {
 
   const handleRegister = async (event) => {
     event.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
     const { nombreCompleto, lugarOrigen, telefono, rol } = formData;
 
     if (!nombreCompleto || !lugarOrigen || !telefono || !rol) {
       setError("Todos los campos son obligatorios.");
+      setIsSubmitting(false);
       return;
     }
-
-    setIsSubmitting(true);
-    setError(null);
 
     try {
       const result = await backendActor.registrarUsuario(
@@ -52,6 +60,7 @@ const Registro = ({ onRegister }) => {
       );
 
       if ("ok" in result) {
+        console.log("Registro exitoso:", result.ok);
         onRegister(rol);
         navigate(`/${rol}-dashboard`);
       } else {
@@ -59,7 +68,7 @@ const Registro = ({ onRegister }) => {
       }
     } catch (err) {
       console.error("Error al registrar usuario:", err);
-      setError("Hubo un problema al registrar el usuario.");
+      setError("Hubo un problema al conectar con el servidor.");
     } finally {
       setIsSubmitting(false);
     }
@@ -123,12 +132,7 @@ const Registro = ({ onRegister }) => {
 
           {error && <p className="text-danger text-center">{error}</p>}
 
-          <Button
-            variant="primary"
-            type="submit"
-            className="w-100"
-            disabled={isSubmitting}
-          >
+          <Button variant="primary" type="submit" className="w-100" disabled={isSubmitting}>
             {isSubmitting ? "Registrando..." : "Registrar"}
           </Button>
         </Form>
