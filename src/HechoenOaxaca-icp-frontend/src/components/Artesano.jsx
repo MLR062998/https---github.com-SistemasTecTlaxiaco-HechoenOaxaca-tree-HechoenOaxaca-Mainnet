@@ -6,8 +6,10 @@ import Products from "./Products";
 const Artesano = () => {
   return (
     <div className="artesano-dashboard">
-      <h2>Bienvenido, Artesano</h2>
-      <p>Gestiona tus productos y añade nuevos a tu inventario.</p>
+      <header className="dashboard-header">
+        <h1 className="title">Bienvenido, Artesano</h1>
+        <p className="subtitle">Gestiona tus productos y añade nuevos a tu inventario.</p>
+      </header>
 
       {/* Opciones principales */}
       <div className="artesano-options">

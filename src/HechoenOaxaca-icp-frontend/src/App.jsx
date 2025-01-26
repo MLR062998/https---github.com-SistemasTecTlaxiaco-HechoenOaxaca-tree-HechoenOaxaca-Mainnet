@@ -38,8 +38,8 @@ function App() {
         <Menu />
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/nuevo-producto" element={<CrearProducto />} />
-          <Route path="/products" element={<Products />} />
+          <Route path="/nuevo-producto/*" element={<CrearProducto />} />
+          <Route path="/products/*" element={<Products />} />
           <Route path="/compra" element={<Compra />} />
           <Route path="/registro" element={<Registro />} />
           <Route path="/wallet" element={<Wallet />} />
