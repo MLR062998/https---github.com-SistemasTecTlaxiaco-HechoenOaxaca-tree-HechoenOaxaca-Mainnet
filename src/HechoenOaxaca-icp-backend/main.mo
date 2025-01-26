@@ -20,6 +20,7 @@ actor HechoenOaxacaBackend {
         #Artesano;
         #Intermediario;
         #Cliente;
+        #Administrador;
     };
 
     // Tipos de errores para operaciones
@@ -61,6 +62,7 @@ actor HechoenOaxacaBackend {
             case "artesano" #Artesano;
             case "intermediario" #Intermediario;
             case "cliente" #Cliente;
+            case "administrador" #Administrador;
             case _ {
                 Debug.print("Rol no válido: " # lowerRol);
                 return #err("El rol proporcionado no es válido: " # rol);
@@ -91,6 +93,21 @@ actor HechoenOaxacaBackend {
 
         Debug.print("Usuario registrado con éxito.");
         return #ok(usuario);
+    };
+
+    // Obtener el rol del usuario
+    public query func getUserRole(id: Text): async ?Text {
+        let principal = Principal.fromText(id); // Convierte el ID recibido a Principal
+        let rol = roles_table.get(principal);  // Consulta la tabla roles_table
+        return switch (rol) {
+            case (?r) switch (r) {
+                case (#Artesano) ?("artesano");
+                case (#Intermediario) ?("intermediario");
+                case (#Cliente) ?("cliente");
+                case (#Administrador) ?("administrador");
+            };
+            case null null; // Si no hay rol, devuelve null
+        };
     };
 
     // Obtener el saldo de un usuario
@@ -152,20 +169,6 @@ actor HechoenOaxacaBackend {
                     case (#ok(_)) return #ok("Transferencia realizada con éxito.");
                 };
             };
-        };
-    };
-
-    // Obtener el rol del usuario
-    public query func getUserRole(id: Text): async ?Text {
-        let principal = Principal.fromText(id);
-        let rol = roles_table.get(principal);
-        return switch (rol) {
-            case (?r) switch (r) {
-                case (#Artesano) ?("artesano");
-                case (#Intermediario) ?("intermediario");
-                case (#Cliente) ?("cliente");
-            };
-            case null null;
         };
     };
 
