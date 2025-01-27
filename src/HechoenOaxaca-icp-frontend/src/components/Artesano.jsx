@@ -3,7 +3,8 @@ import React from "react";
 import { Link, Route, Routes } from "react-router-dom";
 import CrearProducto from "./CrearProducto";
 import Products from "./Products";
-
+import Wallet from "./Wallet";
+import { FaBell, FaWallet, FaPlusCircle, FaShoppingCart } from "react-icons/fa";
 const Artesano = () => {
   return (
     <div className="artesano-dashboard min-h-screen bg-gray-50 px-4 py-6">
@@ -15,29 +16,21 @@ const Artesano = () => {
       </header>
 
       {/* Opciones principales */}
-      <div className="artesano-options flex justify-center gap-4 mb-8">
-        <Link
-          to="/nuevo-producto"
-          className="btn btn-primary px-4 py-2 bg-blue-500 text-white font-medium rounded-lg shadow-md hover:bg-blue-600 transition duration-300"
-        >
+      <div className="artesano-options">
+        <Link to="/nuevo-producto" className="custom-btn btn-primary">
+          <FaPlusCircle size={20} />
           Crear Producto
         </Link>
-        <Link
-          to="/mis-productos"
-          className="btn btn-secondary px-4 py-2 bg-green-500 text-white font-medium rounded-lg shadow-md hover:bg-green-600 transition duration-300"
-        >
+        <Link to="/mis-productos" className="custom-btn btn-secondary">
+          <FaShoppingCart size={20} />
           Mis Productos
         </Link>
-        <Link
-          to="/wallet"
-          className="btn btn-wallet px-4 py-2 bg-yellow-500 text-white font-medium rounded-lg shadow-md hover:bg-yellow-600 transition duration-300"
-        >
-          Wallet
-        </Link>
-        <Link
-          to="/notificaciones"
-          className="btn btn-notifications px-4 py-2 bg-red-500 text-white font-medium rounded-lg shadow-md hover:bg-red-600 transition duration-300"
-        >
+        <Link to="/wallet" className="custom-btn wallet-btn">
+            <FaWallet size={20} />
+            Wallet
+         </Link>
+        <Link to="/notificaciones" className="custom-btn notifications-btn">
+          <FaBell size={20} />
           Notificaciones
         </Link>
       </div>
@@ -47,7 +40,7 @@ const Artesano = () => {
         <Routes>
           <Route path="/nuevo-producto" element={<CrearProducto />} />
           <Route path="/mis-productos" element={<Products />} />
-          <Route path="/wallet" element={<div>Wallet en construcción</div>} />
+          <Route path="/wallet" element={<Wallet />} />
           <Route path="/notificaciones" element={<div>Notificaciones en construcción</div>} />
         </Routes>
       </div>

@@ -90,9 +90,9 @@ const Menu = () => {
     <div>
       <nav className="navbar navbar-expand-lg custom-navbar">
         <div className="container-fluid custom-container">
-          <Link to="/" className="custom-brand">
-            Hecho en Oaxaca
-          </Link>
+        <Link to="/" className="custom-brand">
+           Hecho en Oaxaca
+        </Link>
           <div className="custom-links-container">
             {isConnected ? (
               <>
@@ -131,7 +131,7 @@ const Menu = () => {
           </Button>
         </Modal.Footer>
       </Modal>
-      
+
     </div>
   );
 };

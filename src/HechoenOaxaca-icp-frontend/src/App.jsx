@@ -42,7 +42,7 @@ function App() {
           <Route path="/products/*" element={<Products />} />
           <Route path="/compra" element={<Compra />} />
           <Route path="/registro" element={<Registro />} />
-          <Route path="/wallet" element={<Wallet />} />
+          <Route path="/wallet/*" element={<Wallet />} />
           <Route path="/Artesano-dashboard" element={<Artesano />} />
           <Route path="/cliente-dashboard" element={<ClienteDashboard />} />
           <Route path="/intermediario-dashboard" element={<IntermediarioDashboard />} />
