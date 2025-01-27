@@ -109,6 +109,8 @@ const Menu = () => {
           </div>
         </div>
       </nav>
+      
+      {/* Modal de confirmación de salida */}
       <Modal show={showLogoutModal} onHide={() => setShowLogoutModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Confirmación</Modal.Title>
@@ -118,11 +120,18 @@ const Menu = () => {
           <Button variant="secondary" onClick={() => setShowLogoutModal(false)}>
             Cancelar
           </Button>
-          <Button variant="danger" onClick={handleDisconnect}>
+          <Button
+            variant="danger"
+            onClick={() => {
+              setShowLogoutModal(false); // Cierra el modal
+              handleDisconnect(); // Desconectar al usuario
+            }}
+          >
             Salir
           </Button>
         </Modal.Footer>
       </Modal>
+      
     </div>
   );
 };

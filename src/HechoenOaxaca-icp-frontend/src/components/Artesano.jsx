@@ -17,7 +17,7 @@ const Artesano = () => {
       {/* Opciones principales */}
       <div className="artesano-options flex justify-center gap-4 mb-8">
         <Link
-          to="/crear-producto"
+          to="/nuevo-producto"
           className="btn btn-primary px-4 py-2 bg-blue-500 text-white font-medium rounded-lg shadow-md hover:bg-blue-600 transition duration-300"
         >
           Crear Producto
@@ -45,7 +45,7 @@ const Artesano = () => {
       {/* Configuración de rutas */}
       <div className="artesano-routes container mx-auto">
         <Routes>
-          <Route path="/crear-producto" element={<CrearProducto />} />
+          <Route path="/nuevo-producto" element={<CrearProducto />} />
           <Route path="/mis-productos" element={<Products />} />
           <Route path="/wallet" element={<div>Wallet en construcción</div>} />
           <Route path="/notificaciones" element={<div>Notificaciones en construcción</div>} />
