@@ -14,7 +14,8 @@ import Registro from "./components/Registro";
 import Wallet from './components/Wallet';
 import Artesano from './components/Artesano';
 import ClienteDashboard from './components/Cliente';
-import IntermediarioDashboard from './components/Intermediario'; 
+import IntermediarioDashboard from './components/Intermediario';
+import NotificacionesCliente from "./components/NotificacionesCliente";
 
 const client = createClient({
   canisters: {
@@ -47,6 +48,8 @@ function App() {
           <Route path="/cliente-dashboard" element={<ClienteDashboard />} />
           <Route path="/intermediario-dashboard" element={<IntermediarioDashboard />} />
           <Route path="/registro" element={<Registro />} />
+          <Route path="/notificaciones-cliente" element={<NotificacionesCliente />} />
+
         </Routes>
 
           {/* Otras rutas necesarias */}

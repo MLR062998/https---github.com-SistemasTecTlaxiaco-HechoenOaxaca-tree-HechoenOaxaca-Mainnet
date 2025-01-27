@@ -4,6 +4,8 @@ import { HechoenOaxaca_icp_backend } from "../../../declarations/HechoenOaxaca-i
 import Button from "react-bootstrap/Button";
 import Table from "react-bootstrap/Table";
 import Modal from "react-bootstrap/Modal";
+import { FaBell, FaRegMoneyBillAlt } from "react-icons/fa"; // Iconos correctos
+import "../cliente.scss";
 
 const Cliente = ({ principalId }) => {
   const [productos, setProductos] = useState([]);
@@ -14,53 +16,31 @@ const Cliente = ({ principalId }) => {
   const [pedidoDetalles, setPedidoDetalles] = useState(null);
   const navigate = useNavigate();
 
-  // Fetch productos disponibles
-  const fetchProductos = async () => {
-    try {
-      setLoading(true);
-      const productosRes = await HechoenOaxaca_icp_backend.readProductos();
-      setProductos(productosRes);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error al cargar productos:", error);
-      setLoading(false);
-    }
-  };
-
-  // Fetch historial de pedidos
-  const fetchHistorialPedidos = async () => {
-    try {
-      setLoading(true);
-      const pedidosRes = await HechoenOaxaca_icp_backend.getPedidosByCliente(
-        principalId
-      );
-      setHistorialPedidos(pedidosRes);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error al cargar historial de pedidos:", error);
-      setLoading(false);
-    }
-  };
-
-  // Fetch perfil del cliente
-  const fetchPerfil = async () => {
-    try {
-      const perfilRes = await HechoenOaxaca_icp_backend.obtenerPerfil(
-        principalId
-      );
-      setPerfil(perfilRes);
-    } catch (error) {
-      console.error("Error al cargar perfil:", error);
-    }
-  };
-
   useEffect(() => {
-    fetchProductos();
-    fetchHistorialPedidos();
-    fetchPerfil();
-  }, []);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const productosRes = await HechoenOaxaca_icp_backend.readProductos();
+        const pedidosRes = await HechoenOaxaca_icp_backend.getPedidosByCliente(
+          principalId
+        );
+        const perfilRes = await HechoenOaxaca_icp_backend.obtenerPerfil(
+          principalId
+        );
 
-  // Mostrar detalles de un pedido
+        setProductos(productosRes);
+        setHistorialPedidos(pedidosRes);
+        setPerfil(perfilRes);
+      } catch (error) {
+        console.error("Error al cargar datos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [principalId]);
+
   const handleVerDetallesPedido = (pedidoId) => {
     const pedido = historialPedidos.find((p) => p.id === pedidoId);
     setPedidoDetalles(pedido);
@@ -70,6 +50,22 @@ const Cliente = ({ principalId }) => {
   return (
     <div className="cliente-dashboard">
       <h2>Bienvenido, Cliente</h2>
+
+      {/* Botones superiores */}
+      <div className="botones-superiores">
+        <Button
+          className="btn-wallet"
+          onClick={() => navigate("/wallet")}
+        >
+          <FaRegMoneyBillAlt size={20} /> Wallet
+        </Button>
+        <Button
+          className="btn-notificaciones"
+          onClick={() => navigate("/notificaciones-cliente")}
+        >
+          <FaBell size={20} /> Notificaciones
+        </Button>
+      </div>
 
       {/* Perfil del cliente */}
       {perfil && (
