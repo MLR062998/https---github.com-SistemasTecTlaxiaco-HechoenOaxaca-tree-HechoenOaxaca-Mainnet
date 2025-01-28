@@ -8,6 +8,7 @@ const CrearProducto = () => {
   const [images, setImages] = useState([]);
   const navigate = useNavigate();
 
+  // Manejar cambio de imágenes
   const handleImageChange = (e) => {
     const selectedImages = Array.from(e.target.files);
     if (selectedImages.length > 3) {
@@ -25,14 +26,21 @@ const CrearProducto = () => {
     setImages(selectedImages);
   };
 
+  // Guardar producto
   const saveProduct = async (e) => {
     e.preventDefault();
     const form = e.target;
-    const nombre = form.nombre.value;
-    const precio = parseFloat(form.precio.value);
-    const descripcion = form.descripcion.value;
-    const artesano = form.artesano.value;
-    const tipo = form.tipo.value;
+    const nombre = form.nombre.value.trim();
+    const precio = parseFloat(form.precio.value); // Asegurarse de que sea Float
+    const descripcion = form.descripcion.value.trim();
+    const artesano = form.artesano.value.trim();
+    const tipo = form.tipo.value.trim();
+
+    // Validar campos
+    if (!nombre || isNaN(precio) || !descripcion || !artesano || !tipo) {
+      alert("Por favor, completa todos los campos.");
+      return;
+    }
 
     if (!images.length) {
       alert("Debes subir al menos una imagen.");
@@ -45,23 +53,35 @@ const CrearProducto = () => {
       // Convertir imágenes a Uint8Array
       const imageBlobs = await Promise.all(
         images.map(async (image) => {
-          const buffer = await image.arrayBuffer(); // Obtener el contenido de la imagen
-          return Array.from(new Uint8Array(buffer)); // Convertirlo a un array de números
+          const buffer = await image.arrayBuffer();
+          return Array.from(new Uint8Array(buffer)); // Convertir a array de bytes
         })
       );
 
       console.log("Imágenes convertidas para enviar al backend:", imageBlobs);
 
       // Llamar al backend para crear el producto
-      await marketplaceBackend.createProducto(nombre, precio, descripcion, artesano, tipo, imageBlobs);
+      const result = await marketplaceBackend.createProducto(
+        nombre, // Text
+        precio, // Float
+        descripcion, // Text
+        tipo, // Text
+        imageBlobs // [Blob]
+      );
 
-      alert("Producto agregado exitosamente.");
-      setImages([]);
-      form.reset();
-      navigate("/productos");
+      // Manejar respuesta del backend
+      if ("ok" in result) {
+        alert("Producto agregado exitosamente.");
+        form.reset();
+        setImages([]);
+        navigate("/productos");
+      } else {
+        console.error("Error al agregar producto:", result.err);
+        alert(`Error: ${result.err}`);
+      }
     } catch (error) {
       console.error("Error al agregar producto:", error);
-      alert("Ocurrió un error al agregar el producto. Intenta nuevamente.");
+      alert("Ocurrió un error al agregar el producto.");
     } finally {
       setLoading("");
     }
@@ -78,19 +98,44 @@ const CrearProducto = () => {
             <form onSubmit={saveProduct}>
               <div className="form-group">
                 <label htmlFor="nombre">Nombre del Producto</label>
-                <input type="text" className="form-control" id="nombre" placeholder="Ej: Olla de barro" required />
+                <input
+                  type="text"
+                  className="form-control"
+                  id="nombre"
+                  placeholder="Ej: Olla de barro"
+                  required
+                />
               </div>
               <div className="form-group">
                 <label htmlFor="precio">Precio</label>
-                <input type="number" step="0.01" className="form-control" id="precio" placeholder="Ej: 15.99" required />
+                <input
+                  type="number"
+                  step="0.01"
+                  className="form-control"
+                  id="precio"
+                  placeholder="Ej: 15.99"
+                  required
+                />
               </div>
               <div className="form-group">
                 <label htmlFor="descripcion">Descripción</label>
-                <input type="text" className="form-control" id="descripcion" placeholder="Descripción breve" required />
+                <input
+                  type="text"
+                  className="form-control"
+                  id="descripcion"
+                  placeholder="Descripción breve"
+                  required
+                />
               </div>
               <div className="form-group">
                 <label htmlFor="artesano">Nombre del Artesano</label>
-                <input type="text" className="form-control" id="artesano" placeholder="Nombre del artesano" required />
+                <input
+                  type="text"
+                  className="form-control"
+                  id="artesano"
+                  placeholder="Nombre del artesano"
+                  required
+                />
               </div>
               <div className="form-group">
                 <label htmlFor="tipo">Tipo de Producto</label>
@@ -114,7 +159,11 @@ const CrearProducto = () => {
               </div>
               <br />
               <div className="form-group">
-                <input type="submit" className="btn btn-success" value="Agregar Producto" />
+                <input
+                  type="submit"
+                  className="btn btn-success"
+                  value="Agregar Producto"
+                />
               </div>
             </form>
           </div>

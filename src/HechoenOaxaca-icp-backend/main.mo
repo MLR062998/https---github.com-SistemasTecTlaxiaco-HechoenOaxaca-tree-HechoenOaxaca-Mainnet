@@ -5,6 +5,12 @@ import Iter "mo:base/Iter";
 import Text "mo:base/Text";
 import Char "mo:base/Char";
 import Debug "mo:base/Debug";
+import Float "mo:base/Float";
+import Int "mo:base/Int";
+import Random "mo:base/Random";
+import Blob "mo:base/Blob";
+import Array "mo:base/Array";
+import Nat "mo:base/Nat";
 
 actor HechoenOaxacaBackend {
     // Definición del usuario
@@ -23,15 +29,28 @@ actor HechoenOaxacaBackend {
         #Administrador;
     };
 
-    // Tipos de errores para operaciones
+    // Definición del tipo Producto
+    type Producto = {
+        id: Principal;
+        nombre: Text;
+        precio: Float;
+        descripcion: Text;
+        artesano: Principal; // Asociado al artesano que lo creó
+        tipo: Text;
+        imagenes: [Blob];
+    };
+
+    // Tipos de errores
     type AplicationError = {
         #UsuarioNoExiste: Text;
         #UsuarioYaExiste: Text;
         #RolNoValido: Text;
         #SaldoInsuficiente: Text;
+        #ProductoNoExiste: Text;
+        #PermisoDenegado: Text;
     };
 
-    // Tablas hash para usuarios, roles y balances
+    // Tablas hash para usuarios, roles, balances y productos
     var usuarios_table: HashMap.HashMap<Principal, Usuario> =
         HashMap.HashMap<Principal, Usuario>(10, Principal.equal, Principal.hash);
 
@@ -41,6 +60,32 @@ actor HechoenOaxacaBackend {
     var balances: HashMap.HashMap<Principal, Nat> =
         HashMap.HashMap<Principal, Nat>(10, Principal.equal, Principal.hash);
 
+    var productos_table: HashMap.HashMap<Principal, Producto> =
+        HashMap.HashMap<Principal, Producto>(10, Principal.equal, Principal.hash);
+
+    // Función auxiliar para convertir Float a Nat
+    func floatToNat(f: Float): Nat {
+        if (f < 0.0) {
+            return 0; // Los valores negativos no se pueden convertir a Nat
+        };
+
+        let flooredValue = Float.floor(f); // Redondea hacia abajo el Float
+        let intValue = Float.toInt(flooredValue); // Convierte el Float redondeado a Int
+
+        // Verifica explícitamente que el valor es no negativo
+        return switch (intValue >= 0) {
+            case true Int.abs(intValue); // Convierte el Int positivo a Nat
+            case false 0; // Seguridad adicional, aunque no debería ocurrir
+        };
+    };
+
+    // Generar un ID único
+    func generateId(): async Principal {
+        let randomBlob = await Random.blob(); // Genera un Blob aleatorio
+        let randomBytes = Array.subArray(Blob.toArray(randomBlob), 0, 29);
+        return Principal.fromBlob(Blob.fromArray(randomBytes));
+    };
+
     // Registrar Usuario
     public shared({caller}) func registrarUsuario(
         nombreCompleto: Text,
@@ -49,12 +94,6 @@ actor HechoenOaxacaBackend {
         rol: Text
     ): async Result.Result<Usuario, Text> {
         Debug.print("Inicio del registro de usuario");
-        Debug.print("Nombre completo: " # nombreCompleto);
-        Debug.print("Lugar de origen: " # lugarOrigen);
-        Debug.print("Teléfono: " # telefono);
-        Debug.print("Rol recibido: " # rol);
-        Debug.print("Caller ID: " # Principal.toText(caller));
-
         let lowerRol = toLower(rol);
 
         // Validar el rol recibido
@@ -63,20 +102,12 @@ actor HechoenOaxacaBackend {
             case "intermediario" #Intermediario;
             case "cliente" #Cliente;
             case "administrador" #Administrador;
-            case _ {
-                Debug.print("Rol no válido: " # lowerRol);
-                return #err("El rol proporcionado no es válido: " # rol);
-            }
+            case _ { return #err("El rol proporcionado no es válido: " # rol); };
         };
 
         // Verificar si el usuario ya existe
         if (usuarios_table.get(caller) != null) {
             return #err("El usuario ya está registrado con el ID: " # Principal.toText(caller));
-        };
-
-        // Verificar si el rol ya está asignado
-        if (roles_table.get(caller) != null) {
-            return #err("El usuario ya tiene un rol asignado.");
         };
 
         // Crear y registrar el usuario
@@ -91,26 +122,45 @@ actor HechoenOaxacaBackend {
         roles_table.put(caller, parsedRol);
         balances.put(caller, 0); // Inicializa el saldo en 0
 
-        Debug.print("Usuario registrado con éxito.");
         return #ok(usuario);
     };
 
-    // Obtener el rol del usuario
-    public query func getUserRole(id: Text): async ?Text {
-        let principal = Principal.fromText(id); // Convierte el ID recibido a Principal
-        let rol = roles_table.get(principal);  // Consulta la tabla roles_table
-        return switch (rol) {
-            case (?r) switch (r) {
-                case (#Artesano) ?("artesano");
-                case (#Intermediario) ?("intermediario");
-                case (#Cliente) ?("cliente");
-                case (#Administrador) ?("administrador");
-            };
-            case null null; // Si no hay rol, devuelve null
+    // Crear un producto (solo artesanos)
+    public shared({caller}) func createProducto(
+        nombre: Text,
+        precio: Float,
+        descripcion: Text,
+        tipo: Text,
+        imagenes: [Blob]
+    ): async Result.Result<Producto, AplicationError> {
+        // Validar que el usuario sea un artesano
+        switch (roles_table.get(caller)) {
+            case (?#Artesano) {};
+            case _ { return #err(#PermisoDenegado("Solo los artesanos pueden crear productos.")); };
         };
+
+        // Validar límite de imágenes
+        if (imagenes.size() > 3) {
+            return #err(#PermisoDenegado("No se pueden subir más de 3 imágenes."));
+        };
+
+        // Generar un ID único para el producto
+        let id = await generateId();
+        let producto: Producto = {
+            id = id;
+            nombre = nombre;
+            precio = precio;
+            descripcion = descripcion;
+            artesano = caller; // Asociar producto al artesano creador
+            tipo = tipo;
+            imagenes = imagenes;
+        };
+
+        productos_table.put(id, producto);
+        return #ok(producto);
     };
 
-    // Obtener el saldo de un usuario
+    // Obtener saldo del usuario
     public query func getBalance(principal: Principal): async Nat {
         return switch (balances.get(principal)) {
             case (?b) b;
@@ -118,58 +168,9 @@ actor HechoenOaxacaBackend {
         };
     };
 
-    // Incrementar saldo
-    public shared({caller = _}) func incrementarSaldo(
-        principal: Principal,
-        monto: Nat
-    ): async Result.Result<Nat, Text> {
-        if (monto <= 0) {
-            return #err("El monto debe ser mayor a 0.");
-        };
-        let nuevoSaldo = switch (balances.get(principal)) {
-            case (?b) b + monto;
-            case null monto;
-        };
-        balances.put(principal, nuevoSaldo);
-        return #ok(nuevoSaldo);
-    };
-
-    // Reducir saldo
-    public shared({caller = _}) func reducirSaldo(
-        principal: Principal,
-        monto: Nat
-    ): async Result.Result<Nat, AplicationError> {
-        let saldoActual = switch (balances.get(principal)) {
-            case (?b) b;
-            case null 0;
-        };
-        if (monto > saldoActual) {
-            return #err(#SaldoInsuficiente("El saldo no es suficiente para completar la operación."));
-        };
-        let nuevoSaldo = saldoActual - monto;
-        balances.put(principal, nuevoSaldo);
-        return #ok(nuevoSaldo);
-    };
-
-    // Transferir saldo entre usuarios
-    public shared({caller}) func transferirSaldo(
-        destino: Principal,
-        monto: Nat
-    ): async Result.Result<Text, AplicationError> {
-        if (caller == destino) {
-            return #err(#UsuarioNoExiste("No se puede transferir saldo a sí mismo."));
-        };
-        let resultadoReduccion = await reducirSaldo(caller, monto);
-        switch (resultadoReduccion) {
-            case (#err(e)) return #err(e);
-            case (#ok(_)) {
-                let resultadoIncremento = await incrementarSaldo(destino, monto);
-                switch (resultadoIncremento) {
-                    case (#err(e)) return #err(#UsuarioNoExiste(e));
-                    case (#ok(_)) return #ok("Transferencia realizada con éxito.");
-                };
-            };
-        };
+    // Leer todos los productos
+    public query func readProductos(): async [Producto] {
+        return Iter.toArray(productos_table.vals());
     };
 
     // Función auxiliar para convertir un texto a minúsculas
