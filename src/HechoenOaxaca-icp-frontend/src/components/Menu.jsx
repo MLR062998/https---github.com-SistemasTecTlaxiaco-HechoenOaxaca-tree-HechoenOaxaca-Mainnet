@@ -24,6 +24,7 @@ const Menu = () => {
     canisterId,
   });
 
+  // Función para iniciar sesión
   const handleLogin = async () => {
     const { AuthClient } = await import("@dfinity/auth-client");
     const authClient = await AuthClient.create();
@@ -35,7 +36,8 @@ const Menu = () => {
         const principal = authClient.getIdentity().getPrincipal().toText();
         setPrincipalId(principal);
         setIsConnected(true);
-        fetchUserRole();
+        localStorage.setItem("principalId", principal); // Guardar sesión en localStorage
+        fetchUserRole(principal); // Obtener rol del usuario
       },
       onError: (error) => {
         console.error("Error de autenticación:", error);
@@ -43,15 +45,18 @@ const Menu = () => {
     });
   };
 
-  const fetchUserRole = async () => {
+  // Obtener el rol del usuario
+  const fetchUserRole = async (id) => {
     try {
-      if (principalId) {
-        const roleResult = await backendActor.getUserRole(principalId);
+      const currentPrincipalId = id || principalId;
+      if (currentPrincipalId) {
+        const roleResult = await backendActor.getUserRole(currentPrincipalId);
         console.log("Rol devuelto por backend:", roleResult);
 
         if (roleResult && roleResult.length > 0) {
           const userRole = roleResult[0];
           setUserRole(userRole);
+          localStorage.setItem("userRole", userRole); // Guardar rol del usuario
           navigate(`/${userRole}-dashboard`);
         } else {
           console.warn("Rol no encontrado, redirigiendo al registro.");
@@ -66,33 +71,54 @@ const Menu = () => {
     }
   };
 
+  // Desconectar al usuario
   const handleDisconnect = () => {
     setIsConnected(false);
     setPrincipalId(null);
     setUserRole(null);
+    localStorage.removeItem("principalId");
+    localStorage.removeItem("userRole");
     navigate("/");
   };
 
+  // Validar sesión al cargar la app
   useEffect(() => {
-    if (isConnected) {
-      const timeout = setTimeout(() => {
-        handleDisconnect();
-      }, 15 * 60 * 1000);
-      return () => clearTimeout(timeout);
-    }
-  }, [isConnected]);
+    const checkSession = async () => {
+      const { AuthClient } = await import("@dfinity/auth-client");
+      const authClient = await AuthClient.create();
 
+      if (await authClient.isAuthenticated()) {
+        const principal = localStorage.getItem("principalId");
+        setPrincipalId(principal);
+        setIsConnected(true);
+
+        const storedRole = localStorage.getItem("userRole");
+        if (storedRole) {
+          setUserRole(storedRole);
+          navigate(`/${storedRole}-dashboard`);
+        } else {
+          fetchUserRole(principal); // Obtener rol si no está en localStorage
+        }
+      }
+    };
+
+    checkSession();
+  }, []);
+
+  // Redirigir al dashboard si el usuario ya está conectado
   useEffect(() => {
-    fetchUserRole();
+    if (isConnected && principalId) {
+      fetchUserRole();
+    }
   }, [principalId]);
 
   return (
     <div>
       <nav className="navbar navbar-expand-lg custom-navbar">
         <div className="container-fluid custom-container">
-        <Link to="/" className="custom-brand">
-           Hecho en Oaxaca
-        </Link>
+          <Link to="/" className="custom-brand">
+            Hecho en Oaxaca
+          </Link>
           <div className="custom-links-container">
             {isConnected ? (
               <>
@@ -109,7 +135,7 @@ const Menu = () => {
           </div>
         </div>
       </nav>
-      
+
       {/* Modal de confirmación de salida */}
       <Modal show={showLogoutModal} onHide={() => setShowLogoutModal(false)}>
         <Modal.Header closeButton>
@@ -131,7 +157,6 @@ const Menu = () => {
           </Button>
         </Modal.Footer>
       </Modal>
-
     </div>
   );
 };

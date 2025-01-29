@@ -4,7 +4,7 @@ import { HechoenOaxaca_icp_backend } from "../../../declarations/HechoenOaxaca-i
 import Button from "react-bootstrap/Button";
 import Table from "react-bootstrap/Table";
 import Modal from "react-bootstrap/Modal";
-import { FaBell, FaRegMoneyBillAlt } from "react-icons/fa"; // Iconos correctos
+import { FaBell, FaRegMoneyBillAlt, FaShoppingCart } from "react-icons/fa"; // Agregar FaShoppingCart
 import "../cliente.scss";
 
 const Cliente = ({ principalId }) => {
@@ -52,18 +52,27 @@ const Cliente = ({ principalId }) => {
       <h2>Bienvenido, Cliente</h2>
 
       {/* Botones superiores */}
-      <div className="botones-superiores">
+      <div className="botones-superiores" style={{ textAlign: "center", marginBottom: "20px" }}>
         <Button
           className="btn-wallet"
           onClick={() => navigate("/wallet")}
+          style={{ margin: "0 10px" }}
         >
           <FaRegMoneyBillAlt size={20} /> Wallet
         </Button>
         <Button
           className="btn-notificaciones"
           onClick={() => navigate("/notificaciones-cliente")}
+          style={{ margin: "0 10px" }}
         >
           <FaBell size={20} /> Notificaciones
+        </Button>
+        <Button
+          className="btn-carrito"
+          onClick={() => navigate("/carrito")} // Ajusta la ruta según tu necesidad
+          style={{ margin: "0 10px" }}
+        >
+          <FaShoppingCart size={20} /> Carrito
         </Button>
       </div>
 
@@ -84,7 +93,7 @@ const Cliente = ({ principalId }) => {
       )}
 
       {/* Productos disponibles */}
-      <div className="productos-disponibles">
+      <div className="productos-disponibles" style={{ textAlign: "center" }}>
         <h4>Explorar Productos</h4>
         {loading ? (
           <p>Cargando productos...</p>
