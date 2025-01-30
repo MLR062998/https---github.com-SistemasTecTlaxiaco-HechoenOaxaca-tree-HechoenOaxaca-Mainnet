@@ -21,7 +21,7 @@ const Artesano = () => {
           <FaPlusCircle size={20} />
           Crear Producto
         </Link>
-        <Link to="/mis-productos" className="custom-btn btn-secondary">
+        <Link to="/products" className="custom-btn btn-secondary">
           <FaShoppingCart size={20} />
           Mis Productos
         </Link>

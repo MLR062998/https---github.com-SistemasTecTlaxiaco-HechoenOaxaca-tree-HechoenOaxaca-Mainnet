@@ -1,29 +1,32 @@
 import { useCanister } from "@connect2ic/react";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Container, Card, Form, Button, Alert, Row, Col } from "react-bootstrap";
 
 const CrearProducto = () => {
   const [marketplaceBackend] = useCanister("HechoenOaxaca-icp-backend");
   const [loading, setLoading] = useState("");
   const [images, setImages] = useState([]);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   // Manejar cambio de imágenes
   const handleImageChange = (e) => {
     const selectedImages = Array.from(e.target.files);
     if (selectedImages.length > 3) {
-      alert("Puedes subir un máximo de 3 imágenes.");
+      setError("Puedes subir un máximo de 3 imágenes.");
       return;
     }
 
     for (const image of selectedImages) {
       if (!["image/jpeg", "image/png"].includes(image.type)) {
-        alert("Solo se permiten imágenes en formato JPEG o PNG.");
+        setError("Solo se permiten imágenes en formato JPEG o PNG.");
         return;
       }
     }
 
     setImages(selectedImages);
+    setError("");
   };
 
   // Guardar producto
@@ -38,16 +41,17 @@ const CrearProducto = () => {
 
     // Validar campos
     if (!nombre || isNaN(precio) || !descripcion || !artesano || !tipo) {
-      alert("Por favor, completa todos los campos.");
+      setError("Por favor, completa todos los campos.");
       return;
     }
 
     if (!images.length) {
-      alert("Debes subir al menos una imagen.");
+      setError("Debes subir al menos una imagen.");
       return;
     }
 
     setLoading("Cargando...");
+    setError("");
 
     try {
       // Convertir imágenes a Uint8Array
@@ -74,103 +78,104 @@ const CrearProducto = () => {
         alert("Producto agregado exitosamente.");
         form.reset();
         setImages([]);
-        navigate("/productos");
+        navigate("/products");
       } else {
         console.error("Error al agregar producto:", result.err);
-        alert(`Error: ${result.err}`);
+        setError(`Error: ${result.err}`);
       }
     } catch (error) {
       console.error("Error al agregar producto:", error);
-      alert("Ocurrió un error al agregar el producto.");
+      setError("Ocurrió un error al agregar el producto.");
     } finally {
       setLoading("");
     }
   };
 
   return (
-    <div className="row mt-5">
-      <div className="col-2"></div>
-      <div className="col-8">
-        {loading && <div className="alert alert-primary">{loading}</div>}
-        <div className="card">
-          <div className="card-header">Registrar Producto</div>
-          <div className="card-body">
-            <form onSubmit={saveProduct}>
-              <div className="form-group">
-                <label htmlFor="nombre">Nombre del Producto</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  id="nombre"
-                  placeholder="Ej: Olla de barro"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="precio">Precio</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control"
-                  id="precio"
-                  placeholder="Ej: 15.99"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="descripcion">Descripción</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  id="descripcion"
-                  placeholder="Descripción breve"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="artesano">Nombre del Artesano</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  id="artesano"
-                  placeholder="Nombre del artesano"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="tipo">Tipo de Producto</label>
-                <select className="form-control" id="tipo" required>
-                  <option value="textil">Textil</option>
-                  <option value="artesania">Artesanía</option>
-                  <option value="dulces">Dulces tradicionales</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label htmlFor="imagenes">Subir Imágenes (Máximo 3)</label>
-                <input
-                  type="file"
-                  className="form-control"
-                  id="imagenes"
-                  accept="image/jpeg,image/png"
-                  multiple
-                  onChange={handleImageChange}
-                  required
-                />
-              </div>
-              <br />
-              <div className="form-group">
-                <input
-                  type="submit"
-                  className="btn btn-success"
-                  value="Agregar Producto"
-                />
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-      <div className="col-2"></div>
-    </div>
+    <Container className="mt-5">
+      <Row className="justify-content-center">
+        <Col md={8} lg={6}>
+          <Card className="shadow">
+            <Card.Header className="bg-primary text-white">
+              <h4>Registrar Producto</h4>
+            </Card.Header>
+            <Card.Body>
+              {loading && <Alert variant="info">{loading}</Alert>}
+              {error && <Alert variant="danger">{error}</Alert>}
+
+              <Form onSubmit={saveProduct}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Nombre del Producto</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="nombre"
+                    placeholder="Ej: Olla de barro"
+                    required
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Precio</Form.Label>
+                  <Form.Control
+                    type="number"
+                    step="0.01"
+                    name="precio"
+                    placeholder="Ej: 15.99"
+                    required
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Descripción</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={2}
+                    name="descripcion"
+                    placeholder="Descripción breve"
+                    required
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Nombre del Artesano</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="artesano"
+                    placeholder="Nombre del artesano"
+                    required
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Tipo de Producto</Form.Label>
+                  <Form.Select name="tipo" required>
+                    <option value="textil">Textil</option>
+                    <option value="artesania">Artesanía</option>
+                    <option value="dulces">Dulces tradicionales</option>
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Subir Imágenes (Máximo 3)</Form.Label>
+                  <Form.Control
+                    type="file"
+                    name="imagenes"
+                    accept="image/jpeg,image/png"
+                    multiple
+                    onChange={handleImageChange}
+                    required
+                  />
+                </Form.Group>
+
+                <Button variant="success" type="submit" className="w-100">
+                  Agregar Producto
+                </Button>
+              </Form>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
   );
 };
 

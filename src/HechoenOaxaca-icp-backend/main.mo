@@ -94,35 +94,38 @@ actor HechoenOaxacaBackend {
         rol: Text
     ): async Result.Result<Usuario, Text> {
         Debug.print("Inicio del registro de usuario");
-        let lowerRol = toLower(rol);
-
-        // Validar el rol recibido
-        let parsedRol = switch (lowerRol) {
-            case "artesano" #Artesano;
-            case "intermediario" #Intermediario;
-            case "cliente" #Cliente;
-            case "administrador" #Administrador;
-            case _ { return #err("El rol proporcionado no es válido: " # rol); };
-        };
 
         // Verificar si el usuario ya existe
-        if (usuarios_table.get(caller) != null) {
-            return #err("El usuario ya está registrado con el ID: " # Principal.toText(caller));
+        switch (usuarios_table.get(caller)) {
+            case (?usuarioExistente) {
+                return #ok(usuarioExistente); // Devuelve el usuario existente
+            };
+            case null {
+                // Validar el rol recibido
+                let lowerRol = toLower(rol);
+                let parsedRol = switch (lowerRol) {
+                    case "artesano" #Artesano;
+                    case "intermediario" #Intermediario;
+                    case "cliente" #Cliente;
+                    case "administrador" #Administrador;
+                    case _ { return #err("El rol proporcionado no es válido: " # rol); };
+                };
+
+                // Crear y registrar el usuario
+                let usuario: Usuario = {
+                    nombreCompleto = nombreCompleto;
+                    lugarOrigen = lugarOrigen;
+                    telefono = telefono;
+                    rol = parsedRol;
+                };
+
+                usuarios_table.put(caller, usuario);
+                roles_table.put(caller, parsedRol);
+                balances.put(caller, 0); // Inicializa el saldo en 0
+
+                return #ok(usuario);
+            };
         };
-
-        // Crear y registrar el usuario
-        let usuario: Usuario = {
-            nombreCompleto = nombreCompleto;
-            lugarOrigen = lugarOrigen;
-            telefono = telefono;
-            rol = parsedRol;
-        };
-
-        usuarios_table.put(caller, usuario);
-        roles_table.put(caller, parsedRol);
-        balances.put(caller, 0); // Inicializa el saldo en 0
-
-        return #ok(usuario);
     };
 
     // Crear un producto (solo artesanos)

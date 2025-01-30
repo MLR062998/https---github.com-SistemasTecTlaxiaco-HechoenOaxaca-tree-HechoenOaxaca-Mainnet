@@ -57,11 +57,15 @@ const Registro = ({ onRegister }) => {
       );
 
       if ("ok" in result) {
-        console.log("Registro exitoso:", result.ok);
+        const userData = result.ok;
+        console.log("Usuario existente o registrado exitosamente:", userData);
+
+        // Extraer el rol del usuario y redirigir al dashboard correspondiente
+        const userRole = Object.keys(userData.rol)[0].toLowerCase(); // 'artesano', 'cliente', 'intermediario'
         if (typeof onRegister === "function") {
-          onRegister(rol);
+          onRegister(userRole);
         }
-        navigate(`/${rol}-dashboard`);
+        navigate(`/${userRole}-dashboard`);
       } else {
         setError(result.err || "Error al registrar el usuario.");
       }

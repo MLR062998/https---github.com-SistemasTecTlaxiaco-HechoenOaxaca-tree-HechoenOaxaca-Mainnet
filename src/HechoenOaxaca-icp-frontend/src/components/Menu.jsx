@@ -50,11 +50,15 @@ const Menu = () => {
     try {
       const currentPrincipalId = id || principalId;
       if (currentPrincipalId) {
-        const roleResult = await backendActor.getUserRole(currentPrincipalId);
-        console.log("Rol devuelto por backend:", roleResult);
+        const userData = await backendActor.registrarUsuario(
+          "", // Nombre completo (no necesario para obtener el rol)
+          "", // Lugar de origen (no necesario para obtener el rol)
+          "", // Teléfono (no necesario para obtener el rol)
+          ""  // Rol (no necesario para obtener el rol)
+        );
 
-        if (roleResult && roleResult.length > 0) {
-          const userRole = roleResult[0];
+        if ("ok" in userData) {
+          const userRole = Object.keys(userData.ok.rol)[0].toLowerCase(); // 'artesano', 'cliente', 'intermediario'
           setUserRole(userRole);
           localStorage.setItem("userRole", userRole); // Guardar rol del usuario
           navigate(`/${userRole}-dashboard`);
