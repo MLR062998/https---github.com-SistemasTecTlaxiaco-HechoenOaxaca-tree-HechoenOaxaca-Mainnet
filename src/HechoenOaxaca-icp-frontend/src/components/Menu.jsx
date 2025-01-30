@@ -131,10 +131,10 @@ const Menu = () => {
                 {userRole === "intermediario" && (
                   <Link to="/intermediario-dashboard">Dashboard Intermediario</Link>
                 )}
-                <button onClick={() => setShowLogoutModal(true)}>Salir</button>
+                <button className="custom-button logout-button" onClick={() => setShowLogoutModal(true)}>Salir</button>
               </>
             ) : (
-              <button onClick={handleLogin}>Iniciar Sesión</button>
+              <button className="custom-button login-button" onClick={handleLogin}>Iniciar Sesión</button>
             )}
           </div>
         </div>

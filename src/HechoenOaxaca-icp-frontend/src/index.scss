@@ -80,3 +80,49 @@ $shadow-color: rgba(0, 0, 0, 0.2);
   gap: 15px;
   margin-bottom: 20px;
 }
+
+// Estilos nuevos incorporados
+.custom-navbar {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.custom-links-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.custom-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-button {
+  background-color: #007bff;
+  color: white;
+}
+
+.login-button:hover {
+  background-color: #0056b3;
+}
+
+.logout-button {
+  background-color: #dc3545;
+  color: white;
+}
+
+.logout-button:hover {
+  background-color: #c82333;
+}
+
+.custom-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
