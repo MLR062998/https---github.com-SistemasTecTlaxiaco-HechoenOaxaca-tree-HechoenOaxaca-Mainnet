@@ -1,59 +1,90 @@
 # `HechoenOaxaca-icp`
 
-Welcome to your new `HechoenOaxaca-icp` project and to the Internet Computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.
+Bienvenido a **HechoenOaxaca-icp**, un proyecto de plataforma marketplace desarrollado sobre **Internet Computer**. Este marketplace permite a los usuarios registrarse y participar en diferentes roles dentro de la plataforma, según sus intereses y objetivos:
 
-To get started, you might want to explore the project directory structure and the default configuration file. Working with this project in your development environment will not affect any production deployment or identity tokens.
+- **Productores Artesanos:** Creadores de productos artesanales que pueden vender sus productos en la plataforma.
+- **Socios Estratégicos:** Usuarios que apoyan la comercialización y distribución de los productos.
+- **Consumidores:** Personas interesadas en adquirir productos exclusivos hechos en Oaxaca.
 
-To learn more before you start working with `HechoenOaxaca-icp`, see the following documentation available online:
+El objetivo de este proyecto es facilitar la comercialización de productos artesanales oaxaqueños utilizando tecnologías descentralizadas para garantizar transparencia, seguridad y accesibilidad global.
 
-- [Quick Start](https://internetcomputer.org/docs/current/developer-docs/setup/deploy-locally)
-- [SDK Developer Tools](https://internetcomputer.org/docs/current/developer-docs/setup/install)
-- [Motoko Programming Language Guide](https://internetcomputer.org/docs/current/motoko/main/motoko)
-- [Motoko Language Quick Reference](https://internetcomputer.org/docs/current/motoko/main/language-manual)
+## Requisitos Previos
+Para desarrollar y ejecutar este proyecto localmente, asegúrate de tener instalados los siguientes programas y herramientas:
 
-If you want to start working on your project right away, you might want to try the following commands:
+### 1. Instalación de Dependencias Básicas
 
+#### **Node.js y npm** (para gestionar paquetes y ejecutar el frontend)
+- Descarga e instala [Node.js](https://nodejs.org/), asegurándote de incluir `npm`.
+- Verifica la instalación ejecutando:
+  ```bash
+  node -v
+  npm -v
+  ```
+
+#### **DFX SDK** (para desplegar canisters en Internet Computer)
+- Instala el SDK de Internet Computer con:
+  ```bash
+  sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
+  ```
+- Verifica la instalación con:
+  ```bash
+  dfx --version
+  ```
+
+#### **Ubuntu (WSL2, para Windows)**
+Si usas Windows, es recomendable instalar **WSL2 (Windows Subsystem for Linux)** y una distribución de Ubuntu para ejecutar `dfx` y otros comandos sin problemas.
+- Sigue la guía oficial de instalación de [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install).
+
+## Estructura del Proyecto
+Al clonar este repositorio, encontrarás los siguientes archivos y carpetas principales:
+- **src/backend/** → Código del canister backend en Motoko.
+- **src/frontend/** → Código de la interfaz gráfica de usuario.
+- **dfx.json** → Configuración del proyecto en Internet Computer.
+
+## Despliegue y Ejecución Local
+Si quieres probar el proyecto localmente, sigue estos pasos:
+
+### 1. Iniciar el Replica Local
 ```bash
 cd HechoenOaxaca-icp/
-dfx help
-dfx canister --help
-```
-
-## Running the project locally
-
-If you want to test your project locally, you can use the following commands:
-
-```bash
-# Starts the replica, running in the background
 dfx start --background
+```
+Este comando inicia el entorno local de Internet Computer.
 
-# Deploys your canisters to the replica and generates your candid interface
+### 2. Desplegar los Canisters
+```bash
 dfx deploy
 ```
+Este proceso genera los canisters backend y frontend y proporciona los enlaces de acceso.
 
-Once the job completes, your application will be available at `http://localhost:4943?canisterId={asset_canister_id}`.
+- **Backend:** URL del servicio backend para procesar la lógica de negocio.
+- **Frontend:** Enlace donde se aloja la interfaz de usuario.
+- **Internet Identity:** Servicio de autenticación de Internet Computer.
 
-If you have made changes to your backend canister, you can generate a new candid interface with
+### 3. Iniciar el Servidor de Desarrollo (Frontend)
+```bash
+npm install  # Instalar dependencias del frontend
+npm run start
+```
+Esto iniciará el servidor de desarrollo y la aplicación estará disponible en:
+- `http://localhost:3000` para la interfaz gráfica.
+- `http://localhost:8080` si usa un proxy para API.
 
+## Desarrollo y Modificaciones
+Si realizas cambios en el backend, genera una nueva interfaz Candid con:
 ```bash
 npm run generate
 ```
+Esto garantiza la compatibilidad entre el backend y el frontend.
 
-at any time. This is recommended before starting the frontend development server, and will be run automatically any time you run `dfx deploy`.
+## Documentación Adicional
+Si necesitas más información sobre el desarrollo en Internet Computer, revisa:
+- [Guía de Instalación](https://internetcomputer.org/docs/current/developer-docs/setup/install)
+- [Introducción a Motoko](https://internetcomputer.org/docs/current/motoko/main/motoko)
+- [Referencia Rápida de Motoko](https://internetcomputer.org/docs/current/motoko/main/language-manual)
 
-If you are making frontend changes, you can start a development server with
+## Contribuciones y Contacto
+Si deseas contribuir o tienes dudas sobre el proyecto, puedes abrir un issue en este repositorio o contactar al equipo de desarrollo.
 
-```bash
-npm start
-```
+¡Bienvenido a **HechoenOaxaca-icp**! 🚀
 
-Which will start a server at `http://localhost:8080`, proxying API requests to the replica at port 4943.
-
-### Note on frontend environment variables
-
-If you are hosting frontend code somewhere without using DFX, you may need to make one of the following adjustments to ensure your project does not fetch the root key in production:
-
-- set`DFX_NETWORK` to `ic` if you are using Webpack
-- use your own preferred method to replace `process.env.DFX_NETWORK` in the autogenerated declarations
-  - Setting `canisters -> {asset_canister_id} -> declarations -> env_override to a string` in `dfx.json` will replace `process.env.DFX_NETWORK` with the string in the autogenerated declarations
-- Write your own `createActor` constructor
