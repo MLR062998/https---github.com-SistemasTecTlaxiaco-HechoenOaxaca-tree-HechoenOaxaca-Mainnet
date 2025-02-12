@@ -1,11 +1,23 @@
 // Variables globales
-$primary-color: #ffcc00; // Amarillo vibrante
+$primary-color: #a98b14; // Amarillo vibrante
 $secondary-color: #6c757d; // Gris oscuro
 $success-color: #28a745; // Verde (Mis productos)
 $danger-color: #dc3545; // Rojo (Notificaciones)
 $text-dark: #333; // Texto oscuro
 $white: #fff;
 $shadow-color: rgba(0, 0, 0, 0.2);
+
+// Animación para el eslogan
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 // Estilo para "Hecho en Oaxaca"
 .custom-brand {
@@ -125,4 +137,33 @@ $shadow-color: rgba(0, 0, 0, 0.2);
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+// Estilos para el eslogan
+.eslogan-container {
+  padding: 60px 20px;
+  background: linear-gradient(135deg, #f9f9f9, #e0e0e0);
+  border-radius: 15px;
+  margin-bottom: 40px;
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 1.5s ease-in-out; // Aplicar animación
+}
+
+.eslogan-text {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.eslogan-subtext {
+  font-size: 1.5rem;
+  color: #666;
+  font-style: italic;
+  margin-top: 10px;
 }

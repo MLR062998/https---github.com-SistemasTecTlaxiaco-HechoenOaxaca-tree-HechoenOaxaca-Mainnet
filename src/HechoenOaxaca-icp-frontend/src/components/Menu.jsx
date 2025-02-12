@@ -1,120 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
-import { Actor, HttpAgent } from "@dfinity/agent";
-import { idlFactory, canisterId } from "../../../declarations/HechoenOaxaca-icp-backend";
+import { useAuthContext } from "./authContext";
 import "../index.scss";
 
 const Menu = () => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [principalId, setPrincipalId] = useState(null);
-  const [userRole, setUserRole] = useState(null);
+  const { isAuthenticated, userRole, handleDisconnect, handleLogin } = useAuthContext();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const navigate = useNavigate();
-
-  const agent = new HttpAgent({ host: "http://127.0.0.1:4943" });
-  if (process.env.NODE_ENV === "development") {
-    agent.fetchRootKey().catch((err) =>
-      console.error("Error al obtener rootKey para desarrollo:", err)
-    );
-  }
-  const backendActor = Actor.createActor(idlFactory, {
-    agent,
-    canisterId,
-  });
-
-  // Función para iniciar sesión
-  const handleLogin = async () => {
-    const { AuthClient } = await import("@dfinity/auth-client");
-    const authClient = await AuthClient.create();
-    const identityProvider = "https://nfid.one/authenticate";
-
-    authClient.login({
-      identityProvider,
-      onSuccess: async () => {
-        const principal = authClient.getIdentity().getPrincipal().toText();
-        setPrincipalId(principal);
-        setIsConnected(true);
-        localStorage.setItem("principalId", principal); // Guardar sesión en localStorage
-        fetchUserRole(principal); // Obtener rol del usuario
-      },
-      onError: (error) => {
-        console.error("Error de autenticación:", error);
-      },
-    });
-  };
-
-  // Obtener el rol del usuario
-  const fetchUserRole = async (id) => {
-    try {
-      const currentPrincipalId = id || principalId;
-      if (currentPrincipalId) {
-        const userData = await backendActor.registrarUsuario(
-          "", // Nombre completo (no necesario para obtener el rol)
-          "", // Lugar de origen (no necesario para obtener el rol)
-          "", // Teléfono (no necesario para obtener el rol)
-          ""  // Rol (no necesario para obtener el rol)
-        );
-
-        if ("ok" in userData) {
-          const userRole = Object.keys(userData.ok.rol)[0].toLowerCase(); // 'artesano', 'cliente', 'intermediario'
-          setUserRole(userRole);
-          localStorage.setItem("userRole", userRole); // Guardar rol del usuario
-          navigate(`/${userRole}-dashboard`);
-        } else {
-          console.warn("Rol no encontrado, redirigiendo al registro.");
-          setUserRole(null);
-          navigate("/registro");
-        }
-      }
-    } catch (err) {
-      console.error("Error al obtener el rol del usuario:", err);
-      setUserRole(null);
-      navigate("/registro");
-    }
-  };
-
-  // Desconectar al usuario
-  const handleDisconnect = () => {
-    setIsConnected(false);
-    setPrincipalId(null);
-    setUserRole(null);
-    localStorage.removeItem("principalId");
-    localStorage.removeItem("userRole");
-    navigate("/");
-  };
-
-  // Validar sesión al cargar la app
-  useEffect(() => {
-    const checkSession = async () => {
-      const { AuthClient } = await import("@dfinity/auth-client");
-      const authClient = await AuthClient.create();
-
-      if (await authClient.isAuthenticated()) {
-        const principal = localStorage.getItem("principalId");
-        setPrincipalId(principal);
-        setIsConnected(true);
-
-        const storedRole = localStorage.getItem("userRole");
-        if (storedRole) {
-          setUserRole(storedRole);
-          navigate(`/${storedRole}-dashboard`);
-        } else {
-          fetchUserRole(principal); // Obtener rol si no está en localStorage
-        }
-      }
-    };
-
-    checkSession();
-  }, []);
-
-  // Redirigir al dashboard si el usuario ya está conectado
-  useEffect(() => {
-    if (isConnected && principalId) {
-      fetchUserRole();
-    }
-  }, [principalId]);
 
   return (
     <div>
@@ -124,23 +17,30 @@ const Menu = () => {
             Hecho en Oaxaca
           </Link>
           <div className="custom-links-container">
-            {isConnected ? (
+            {/* ✅ Mostrar botón de "Iniciar Sesión" si NO está autenticado */}
+            {!isAuthenticated ? (
+              <button className="custom-button login-button" onClick={handleLogin}>
+                Iniciar Sesión
+              </button>
+            ) : (
               <>
+                {/* ✅ Mostrar Dashboard según el rol del usuario */}
                 {userRole === "cliente" && <Link to="/cliente-dashboard">Dashboard Cliente</Link>}
                 {userRole === "artesano" && <Link to="/artesano-dashboard">Dashboard Artesano</Link>}
                 {userRole === "intermediario" && (
                   <Link to="/intermediario-dashboard">Dashboard Intermediario</Link>
                 )}
-                <button className="custom-button logout-button" onClick={() => setShowLogoutModal(true)}>Salir</button>
+                {/* ✅ Botón de cerrar sesión */}
+                <button className="custom-button logout-button" onClick={() => setShowLogoutModal(true)}>
+                  Salir
+                </button>
               </>
-            ) : (
-              <button className="custom-button login-button" onClick={handleLogin}>Iniciar Sesión</button>
             )}
           </div>
         </div>
       </nav>
 
-      {/* Modal de confirmación de salida */}
+      {/* ✅ Modal de Confirmación de Cierre de Sesión */}
       <Modal show={showLogoutModal} onHide={() => setShowLogoutModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Confirmación</Modal.Title>
@@ -153,8 +53,8 @@ const Menu = () => {
           <Button
             variant="danger"
             onClick={() => {
-              setShowLogoutModal(false); // Cierra el modal
-              handleDisconnect(); // Desconectar al usuario
+              setShowLogoutModal(false);
+              handleDisconnect();
             }}
           >
             Salir
@@ -165,4 +65,5 @@ const Menu = () => {
   );
 };
 
+// ✅ Exportación por defecto para evitar errores en `App.jsx`
 export default Menu;

@@ -51,17 +51,13 @@ actor HechoenOaxacaBackend {
     };
 
     // Tablas hash para usuarios, roles, balances y productos
-    var usuarios_table: HashMap.HashMap<Principal, Usuario> =
-        HashMap.HashMap<Principal, Usuario>(10, Principal.equal, Principal.hash);
+    var usuarios_table = HashMap.HashMap<Principal, Usuario>(10, Principal.equal, Principal.hash);
+    var roles_table = HashMap.HashMap<Principal, Rol>(10, Principal.equal, Principal.hash);
+    var balances = HashMap.HashMap<Principal, Nat>(10, Principal.equal, Principal.hash);
+    var productos_table = HashMap.HashMap<Principal, Producto>(10, Principal.equal, Principal.hash);
 
-    var roles_table: HashMap.HashMap<Principal, Rol> =
-        HashMap.HashMap<Principal, Rol>(10, Principal.equal, Principal.hash);
-
-    var balances: HashMap.HashMap<Principal, Nat> =
-        HashMap.HashMap<Principal, Nat>(10, Principal.equal, Principal.hash);
-
-    var productos_table: HashMap.HashMap<Principal, Producto> =
-        HashMap.HashMap<Principal, Producto>(10, Principal.equal, Principal.hash);
+    // Estructura para vincular múltiples Principal a un mismo usuario
+    var identity_links = HashMap.HashMap<Principal, Principal>(10, Principal.equal, Principal.hash);
 
     // Función auxiliar para convertir Float a Nat
     func floatToNat(f: Float): Nat {
@@ -86,32 +82,55 @@ actor HechoenOaxacaBackend {
         return Principal.fromBlob(Blob.fromArray(randomBytes));
     };
 
-    // Registrar Usuario
+    // ✅ REGISTRAR USUARIO (CON DEPURACIÓN)
     public shared({caller}) func registrarUsuario(
         nombreCompleto: Text,
         lugarOrigen: Text,
         telefono: Text,
         rol: Text
     ): async Result.Result<Usuario, Text> {
-        Debug.print("Inicio del registro de usuario");
+        Debug.print("📌 Intento de registro con Principal: " # Principal.toText(caller));
 
-        // Verificar si el usuario ya existe
-        switch (usuarios_table.get(caller)) {
-            case (?usuarioExistente) {
-                return #ok(usuarioExistente); // Devuelve el usuario existente
+        // ❗ RECHAZAR USUARIO NO AUTENTICADO
+        if (Principal.isAnonymous(caller) or caller == Principal.fromText("aaaaa-aa")) {
+            Debug.print("🚨 Error: Intento de registro con usuario NO autenticado.");
+            return #err("🚨 Error: Usuario no autenticado. Inicia sesión antes de registrarte.");
+        };
+
+        // Si el usuario ya está vinculado, recupera su Principal global
+        let globalPrincipal = switch (identity_links.get(caller)) {
+            case (?principal) {
+                Debug.print("🔹 Principal almacenado en identity_links: " # Principal.toText(principal));
+                principal;
             };
             case null {
-                // Validar el rol recibido
-                let lowerRol = toLower(rol);
-                let parsedRol = switch (lowerRol) {
-                    case "artesano" #Artesano;
-                    case "intermediario" #Intermediario;
-                    case "cliente" #Cliente;
-                    case "administrador" #Administrador;
-                    case _ { return #err("El rol proporcionado no es válido: " # rol); };
-                };
+                Debug.print("🔹 Nuevo Principal: " # Principal.toText(caller));
+                caller;
+            };
+        };
 
-                // Crear y registrar el usuario
+        // 🔹 Convertir el rol a minúsculas y validar
+        let lowerRol = Text.toLowercase(rol);
+        let parsedRol = switch (lowerRol) {
+            case "artesano" #Artesano;
+            case "intermediario" #Intermediario;
+            case "cliente" #Cliente;
+            case "administrador" #Administrador;
+            case _ {
+                Debug.print("🚨 Error: Rol inválido proporcionado: " # rol);
+                return #err("🚨 Rol inválido: " # rol);
+            };
+        };
+
+        // ✅ Revisar si el usuario ya está registrado
+        switch (usuarios_table.get(globalPrincipal)) {
+            case (?usuarioExistente) {
+                Debug.print("✅ Usuario ya existe con Principal: " # Principal.toText(globalPrincipal));
+                return #ok(usuarioExistente);
+            };
+            case null {
+                Debug.print("🆕 Registrando nuevo usuario con Principal: " # Principal.toText(globalPrincipal));
+
                 let usuario: Usuario = {
                     nombreCompleto = nombreCompleto;
                     lugarOrigen = lugarOrigen;
@@ -119,13 +138,81 @@ actor HechoenOaxacaBackend {
                     rol = parsedRol;
                 };
 
-                usuarios_table.put(caller, usuario);
-                roles_table.put(caller, parsedRol);
-                balances.put(caller, 0); // Inicializa el saldo en 0
+                usuarios_table.put(globalPrincipal, usuario);
+                roles_table.put(globalPrincipal, parsedRol);
+                balances.put(globalPrincipal, 0);
+
+                // Vincular NFID Principal con el Principal Global
+                identity_links.put(caller, globalPrincipal);
 
                 return #ok(usuario);
             };
         };
+    };
+
+    // ✅ OBTENER ROL DEL USUARIO (CON DEPURACIÓN)
+    public query func getRolUsuario(usuario: Principal): async Result.Result<Text, Text> {
+        Debug.print("📌 Consulta de rol para Principal: " # Principal.toText(usuario));
+
+        let globalPrincipal = switch (identity_links.get(usuario)) {
+            case (?principal) {
+                Debug.print("🔹 Principal almacenado en identity_links: " # Principal.toText(principal));
+                principal;
+            };
+            case null {
+                Debug.print("🔹 Usando Principal proporcionado: " # Principal.toText(usuario));
+                usuario;
+            };
+        };
+
+        Debug.print("🔹 Principal final consultado en roles_table: " # Principal.toText(globalPrincipal));
+
+        switch (roles_table.get(globalPrincipal)) {
+            case (?#Artesano) { return #ok("Artesano"); };
+            case (?#Intermediario) { return #ok("Intermediario"); };
+            case (?#Cliente) { return #ok("Cliente"); };
+            case (?#Administrador) { return #ok("Administrador"); };
+            case null { 
+                Debug.print("❌ Error: Usuario no registrado con Principal: " # Principal.toText(globalPrincipal));
+                return #err("Usuario no registrado."); 
+            };
+        };
+    };
+
+    // ✅ REALIZAR PAGO
+    public shared({caller}) func realizarPago(artesano: Principal, monto: Nat): async Result.Result<Text, Text> {
+        let globalCliente = switch (identity_links.get(caller)) {
+            case (?principal) principal;
+            case null caller;
+        };
+
+        let globalArtesano = switch (identity_links.get(artesano)) {
+            case (?principal) principal;
+            case null artesano;
+        };
+
+        if (globalCliente == globalArtesano) {
+            return #err("No puedes pagarte a ti mismo.");
+        };
+
+        let saldoCliente = switch (balances.get(globalCliente)) {
+            case (?saldo) saldo;
+            case null 0;
+        };
+
+        if (saldoCliente < monto) {
+            return #err("Saldo insuficiente.");
+        };
+
+        let saldoArtesano = switch (balances.get(globalArtesano)) {
+            case (?saldo) saldo;
+            case null 0;
+        };
+
+        balances.put(globalCliente, saldoCliente - monto);
+        balances.put(globalArtesano, saldoArtesano + monto);
+
+        return #ok("Pago realizado con éxito.");
     };
 
     // Crear un producto (solo artesanos)
@@ -163,17 +250,67 @@ actor HechoenOaxacaBackend {
         return #ok(producto);
     };
 
-    // Obtener saldo del usuario
-    public query func getBalance(principal: Principal): async Nat {
-        return switch (balances.get(principal)) {
-            case (?b) b;
-            case null 0;
-        };
-    };
-
     // Leer todos los productos
     public query func readProductos(): async [Producto] {
         return Iter.toArray(productos_table.vals());
+    };
+
+    // Actualizar un producto (solo el artesano que lo creó)
+    public shared({caller}) func updateProducto(
+        id: Principal,
+        nombre: Text,
+        precio: Float,
+        descripcion: Text,
+        tipo: Text,
+        imagenes: [Blob]
+    ): async Result.Result<Producto, AplicationError> {
+        switch (productos_table.get(id)) {
+            case (?producto) {
+                // Validar que el llamante es el artesano que creó el producto
+                if (producto.artesano != caller) {
+                    return #err(#PermisoDenegado("Solo el artesano creador puede actualizar el producto."));
+                };
+
+                // Validar límite de imágenes
+                if (imagenes.size() > 3) {
+                    return #err(#PermisoDenegado("No se pueden subir más de 3 imágenes."));
+                };
+
+                let updatedProducto: Producto = {
+                    id = id;
+                    nombre = nombre;
+                    precio = precio;
+                    descripcion = descripcion;
+                    artesano = producto.artesano;
+                    tipo = tipo;
+                    imagenes = imagenes;
+                };
+
+                productos_table.put(id, updatedProducto);
+                return #ok(updatedProducto);
+            };
+            case null {
+                return #err(#ProductoNoExiste("El producto no existe."));
+            };
+        };
+    };
+
+    // Eliminar un producto (solo el artesano que lo creó)
+    public shared({caller}) func deleteProducto(id: Principal): async Result.Result<(), AplicationError> {
+        switch (productos_table.get(id)) {
+            case (?producto) {
+                // Validar que el llamante es el artesano que creó el producto
+                if (producto.artesano != caller) {
+                    return #err(#PermisoDenegado("Solo el artesano creador puede eliminar el producto."));
+                };
+
+                productos_table.delete(id);
+                return #ok();
+            };
+            case null {
+                return #err(#ProductoNoExiste("El producto no existe."));
+            };
+        };
     };
 
     // Función auxiliar para convertir un texto a minúsculas

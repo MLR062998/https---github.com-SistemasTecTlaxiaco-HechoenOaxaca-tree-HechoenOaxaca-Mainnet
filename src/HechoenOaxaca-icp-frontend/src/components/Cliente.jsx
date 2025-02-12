@@ -10,6 +10,7 @@ const Cliente = ({ principalId }) => {
   const [productos, setProductos] = useState([]);
   const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [carrito, setCarrito] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,6 +32,11 @@ const Cliente = ({ principalId }) => {
     fetchData();
   }, [principalId]);
 
+  // Función para agregar un producto al carrito
+  const agregarAlCarrito = (producto) => {
+    setCarrito([...carrito, producto]);
+  };
+
   return (
     <div className="cliente-dashboard">
       <h2 className="text-center">Bienvenido, Cliente</h2>
@@ -43,7 +49,7 @@ const Cliente = ({ principalId }) => {
         <Button className="btn-notificaciones" onClick={() => navigate("/notificaciones-cliente")}> 
           <FaBell size={20} /> Notificaciones
         </Button>
-        <Button className="btn-carrito" onClick={() => navigate("/carrito")}> 
+        <Button className="btn-carrito" onClick={() => navigate("/carrito", { state: { carrito } })}> 
           <FaShoppingCart size={20} /> Carrito
         </Button>
       </div>
@@ -75,6 +81,9 @@ const Cliente = ({ principalId }) => {
                   <Card.Text>{producto.descripcion}</Card.Text>
                   <Button variant="primary" onClick={() => navigate(`/producto/${producto.id}`, { state: producto })}>
                     Ver más
+                  </Button>
+                  <Button variant="success" onClick={() => agregarAlCarrito(producto)}>
+                    Agregar al Carrito
                   </Button>
                 </Card.Body>
               </Card>

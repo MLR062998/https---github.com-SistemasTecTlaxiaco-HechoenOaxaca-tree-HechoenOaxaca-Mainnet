@@ -52,38 +52,43 @@ const Home = () => {
   };
 
   return (
-    <section className="mt-5 text-center">
-      <h1 className="eslogan">Hecho a mano, Hecho con el corazón</h1>
-      <div className="container mt-4">
-        {loading ? (
-          <p>Cargando productos...</p>
-        ) : (
-          <div className="row">
-            {products.map((product) => (
-              <div key={product.id} className="col-md-4 mb-4">
-                <Card>
-                  {product.imagenes.length > 0 && (
-                    <Card.Img
-                      variant="top"
-                      src={product.imagenes[0]} // Muestra la primera imagen
-                      alt={`Imagen de ${product.nombre}`}
-                      style={{ maxHeight: "200px", objectFit: "cover" }}
-                    />
-                  )}
-                  <Card.Body>
-                    <Card.Title>{product.nombre}</Card.Title>
-                    <Card.Text>{product.descripcion}</Card.Text>
-                    <Card.Text>Precio: ICP {product.precio}</Card.Text>
-                    <Button variant="primary" onClick={() => handleShowDetails(product)}>
-                      Ver Detalles
-                    </Button>
-                  </Card.Body>
-                </Card>
-              </div>
-            ))}
+<section className="mt-5 text-center">
+  {/* Eslogan con clases personalizadas */}
+  <div className="eslogan-container">
+    <h1 className="eslogan-text">Hecho a mano, Hecho con el corazón</h1>
+    <p className="eslogan-subtext">Artesanías únicas que cuentan historias</p>
+  </div>
+
+  <div className="container mt-4">
+    {loading ? (
+      <p>Cargando productos...</p>
+    ) : (
+      <div className="row">
+        {products.map((product) => (
+          <div key={product.id} className="col-md-4 mb-4">
+            <Card>
+              {product.imagenes.length > 0 && (
+                <Card.Img
+                  variant="top"
+                  src={product.imagenes[0]} // Muestra la primera imagen
+                  alt={`Imagen de ${product.nombre}`}
+                  style={{ maxHeight: "200px", objectFit: "cover" }}
+                />
+              )}
+              <Card.Body>
+                <Card.Title>{product.nombre}</Card.Title>
+                <Card.Text>{product.descripcion}</Card.Text>
+                <Card.Text>Precio: ICP {product.precio}</Card.Text>
+                <Button variant="primary" onClick={() => handleShowDetails(product)}>
+                  Ver Detalles
+                </Button>
+              </Card.Body>
+            </Card>
           </div>
-        )}
+        ))}
       </div>
+    )}
+  </div>
 
       {/* Modal de detalles del producto */}
       <Compra
