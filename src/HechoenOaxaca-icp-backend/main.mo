@@ -154,6 +154,12 @@ actor HechoenOaxacaBackend {
     public query func getRolUsuario(usuario: Principal): async Result.Result<Text, Text> {
         Debug.print("📌 Consulta de rol para Principal: " # Principal.toText(usuario));
 
+        // ❗ RECHAZAR USUARIO NO AUTENTICADO
+        if (Principal.isAnonymous(usuario) or usuario == Principal.fromText("aaaaa-aa")) {
+            Debug.print("🚨 Error: Consulta con usuario anónimo.");
+            return #err("🚨 Usuario no autenticado.");
+        };
+
         let globalPrincipal = switch (identity_links.get(usuario)) {
             case (?principal) {
                 Debug.print("🔹 Principal almacenado en identity_links: " # Principal.toText(principal));

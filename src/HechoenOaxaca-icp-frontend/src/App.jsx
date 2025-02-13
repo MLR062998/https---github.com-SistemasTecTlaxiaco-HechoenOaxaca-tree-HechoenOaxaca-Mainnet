@@ -25,7 +25,7 @@ const client = createClient({
   },
   providers: [
     new InternetIdentity({
-      providerUrl: "http://a3shf-5eaaa-aaaaa-qaafa-cai.localhost:4943/",
+      providerUrl: "http://be2us-64aaa-aaaaa-qaabq-cai.localhost:4943/",
     }),
   ],
   globalProviderConfig: {

@@ -1,8 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Principal } from "@dfinity/principal";
 import { Actor, HttpAgent } from "@dfinity/agent";
-import { idlFactory, canisterId } from "../../../declarations/HechoenOaxaca-icp-backend";
+import { idlFactory } from "../../../declarations/HechoenOaxaca-icp-backend";
 import { useNavigate } from "react-router-dom";
+
+// 🔹 Configuración manual de Canister IDs
+const LOCAL_CANISTER_ID = "br5f7-7uaaa-aaaaa-qaaca-cai"; // Canister ID local
+const MAINNET_CANISTER_ID = "bkyz2-fmaaa-aaaaa-qaaaq-cai"; // Canister ID en IC
+
+const canisterId =
+  process.env.DFX_NETWORK === "ic" ? MAINNET_CANISTER_ID : LOCAL_CANISTER_ID;
 
 export const AuthContext = createContext();
 
@@ -23,20 +30,27 @@ export const AuthProvider = ({ children }) => {
 
   const navigate = useNavigate();
 
-  // ✅ Crear agente autenticado
+  // ✅ Crear agente autenticado con la identidad
   const getBackendActor = async (identity) => {
     if (!identity) {
       console.error("❌ No se pudo obtener identidad.");
       return null;
     }
 
-    const agent = new HttpAgent({ host: "http://127.0.0.1:4943" });
+    // 🔹 Configurar el host dependiendo del entorno
+    const host =
+      process.env.DFX_NETWORK === "ic"
+        ? "https://ic0.app"
+        : "http://127.0.0.1:4943";
+
+    const agent = new HttpAgent({ host });
     agent.replaceIdentity(identity);
 
     if (process.env.NODE_ENV === "development") {
       console.log("🔄 Obteniendo clave raíz en desarrollo...");
       await agent.fetchRootKey();
     }
+
     return Actor.createActor(idlFactory, { agent, canisterId });
   };
 
@@ -74,7 +88,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ✅ Iniciar sesión con NFID
+  // ✅ Iniciar sesión con NFID evitando autenticación anónima
   const handleLogin = async () => {
     try {
       console.log("🔄 Creando AuthClient...");
@@ -84,6 +98,7 @@ export const AuthProvider = ({ children }) => {
       console.log("🔄 Intentando iniciar sesión con NFID...");
       await authClient.login({
         identityProvider: "https://nfid.one/authenticate",
+        derivationOrigin: window.location.origin, // Evita problemas de autenticación
         maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 días
       });
 
