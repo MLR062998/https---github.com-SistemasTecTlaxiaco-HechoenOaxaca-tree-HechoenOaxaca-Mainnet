@@ -59,6 +59,9 @@ actor HechoenOaxacaBackend {
     // Estructura para vincular múltiples Principal a un mismo usuario
     var identity_links = HashMap.HashMap<Principal, Principal>(10, Principal.equal, Principal.hash);
 
+    // Constante para determinar si estamos en un entorno local
+    let isLocalEnvironment = true; // Cambia a `false` cuando despliegues en IC
+
     // Función auxiliar para convertir Float a Nat
     func floatToNat(f: Float): Nat {
         if (f < 0.0) {
@@ -97,15 +100,15 @@ actor HechoenOaxacaBackend {
             return #err("🚨 Error: Usuario no autenticado. Inicia sesión antes de registrarte.");
         };
 
-        // Si el usuario ya está vinculado, recupera su Principal global
-        let globalPrincipal = switch (identity_links.get(caller)) {
-            case (?principal) {
-                Debug.print("🔹 Principal almacenado en identity_links: " # Principal.toText(principal));
-                principal;
-            };
-            case null {
-                Debug.print("🔹 Nuevo Principal: " # Principal.toText(caller));
-                caller;
+        // Determinar el Principal global
+        let globalPrincipal = if (Principal.toText(caller) == "aaaaa-aa") {
+            return #err("🚨 Error: Usuario anónimo no permitido.");
+        } else if (Principal.toText(caller) == "2vxsx-fae" or isLocalEnvironment) {
+            caller; // En local, usa directamente `caller`
+        } else {
+            switch (identity_links.get(caller)) {
+                case (?principal) principal;
+                case null caller;
             };
         };
 
@@ -143,7 +146,9 @@ actor HechoenOaxacaBackend {
                 balances.put(globalPrincipal, 0);
 
                 // Vincular NFID Principal con el Principal Global
-                identity_links.put(caller, globalPrincipal);
+                if (not isLocalEnvironment) {
+                    identity_links.put(caller, globalPrincipal);
+                };
 
                 return #ok(usuario);
             };

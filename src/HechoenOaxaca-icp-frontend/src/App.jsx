@@ -18,6 +18,7 @@ import ClienteDashboard from "./components/Cliente";
 import IntermediarioDashboard from "./components/Intermediario";
 import NotificacionesCliente from "./components/NotificacionesCliente";
 import CarritoDeCliente from "./components/CarritoDeCliente";
+import NfidLogin from "./components/NfidLogin";
 
 const client = createClient({
   canisters: {
@@ -51,6 +52,7 @@ function App() {
             <Route path="/intermediario-dashboard" element={<IntermediarioDashboard />} />
             <Route path="/notificaciones-cliente" element={<NotificacionesCliente />} />
             <Route path="/carrito" element={<CarritoDeCliente />} />
+            <Route path="/nfid-login" element={<NfidLogin />} />
           </Routes>
         </AuthProvider>  {/*  Cierra AuthProvider */}
       </Router>
