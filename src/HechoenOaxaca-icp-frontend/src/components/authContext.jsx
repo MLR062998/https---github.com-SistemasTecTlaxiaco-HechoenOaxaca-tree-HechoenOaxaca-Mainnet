@@ -41,11 +41,8 @@ export const AuthProvider = ({ children }) => {
         ? "https://ic0.app"
         : "http://127.0.0.1:4943";
 
-    // 💡 PASO CRUCIAL: Configurar el agente sin identidad por defecto
-    const agent = new HttpAgent({ host });
-
-    // 🔹 Asegurar que la identidad autenticada se usa para solicitudes
-    agent.replaceIdentity(identity);
+    // 🔹 Asegurar que el agente usa la identidad autenticada
+    const agent = new HttpAgent({ host, identity });
 
     if (process.env.DFX_NETWORK !== "ic") {
       try {
@@ -105,9 +102,9 @@ export const AuthProvider = ({ children }) => {
       await authClient.login({
         identityProvider: "https://nfid.one/authenticate",
         derivationOrigin: window.location.origin,
-        maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000),
+        maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 días
         windowOpenerFeatures: "width=500,height=700",
-        forceVerify: true 
+        forceVerify: true,
       });
 
       if (!(await authClient.isAuthenticated())) {
@@ -130,6 +127,8 @@ export const AuthProvider = ({ children }) => {
       setPrincipalId(principal);
       setIdentity(identity);
       setIsAuthenticated(true);
+
+      // 🔹 Guardar solo el Principal en localStorage
       localStorage.setItem("principalId", principal);
 
       await fetchUserRole(identity, principal);
@@ -149,20 +148,19 @@ export const AuthProvider = ({ children }) => {
       const { AuthClient } = await import("@dfinity/auth-client");
       const authClient = await AuthClient.create();
 
-      const isReallyAuthenticated = await authClient.isAuthenticated();
-      console.log(`🔎 authClient.isAuthenticated(): ${isReallyAuthenticated}`);
-
-      if (storedPrincipal && isReallyAuthenticated) {
+      if (storedPrincipal) {
         console.log("✅ Sesión activa detectada.");
         setPrincipalId(storedPrincipal);
         setIsAuthenticated(true);
 
+        // 🔹 Reconstruir la identidad usando el Principal almacenado
         const identity = authClient.getIdentity();
         setIdentity(identity);
+
         await fetchUserRole(identity, storedPrincipal);
       } else {
         console.log("🔹 No se encontró sesión activa. Limpiando...");
-        localStorage.removeItem("principalId");
+        localStorage.clear();
         setIsAuthenticated(false);
         setPrincipalId(null);
         setIdentity(null);
@@ -192,7 +190,7 @@ export const AuthProvider = ({ children }) => {
 
     const { AuthClient } = await import("@dfinity/auth-client");
     const authClient = await AuthClient.create();
-    await authClient.logout(); 
+    await authClient.logout();
 
     window.location.href = "/";
   };
