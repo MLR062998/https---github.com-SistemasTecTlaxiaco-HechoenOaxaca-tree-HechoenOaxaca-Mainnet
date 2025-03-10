@@ -1,16 +1,16 @@
 {
   "canisters": {
     "HechoenOaxaca-icp-backend": {
-      "main": "src/HechoenOaxaca-icp-backend/main.mo",
       "type": "motoko",
+      "main": "src/HechoenOaxaca-icp-backend/main.mo",
+      "candid": "src/HechoenOaxaca-icp-backend/HechoenOaxaca-icp-backend.did",
+      "wasm": "src/HechoenOaxaca-icp-backend/HechoenOaxaca-icp-backend.wasm",
       "initial_cycles": 10000000000,
       "settings": {
         "controllers": [
           "zzvbq-oaj5w-fqrwq-abi3l-yqfwj-cmlr4-yajn7-35kw6-euo6a-a6k67-tae",
           "bd3sg-teaaa-aaaaa-qaaba-cai",
           "bkyz2-fmaaa-aaaaa-qaaaq-cai",
-          "vrbjn-2o2vr-4rsgr-mqbcx-nrj2q-vwu3k-rfooz-hyjdv-hirpe-dmsvd-6ae",
-          "dllsp-x44vc-y6kja-4jeyi-sgjc3-yvgjs-rmzms-rehgw-6drfe-eryzc-aqe",
           "6ynrx-3kifb-sqaqk-2s22n-lszqu-xfzcu-cnxhl-eg3kd-jykk5-nnndr-aqe"
         ]
       }

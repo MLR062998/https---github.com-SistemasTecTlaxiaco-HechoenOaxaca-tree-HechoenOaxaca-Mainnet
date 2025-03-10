@@ -59,6 +59,9 @@ actor HechoenOaxacaBackend {
     // Estructura para vincular múltiples Principal a un mismo usuario
     var identity_links = HashMap.HashMap<Principal, Principal>(10, Principal.equal, Principal.hash);
 
+    // Almacenamiento estable de usuarios
+    stable var usuarios : [(Principal, Text)] = []; // (Principal, Rol)
+
     // Constante para determinar si estamos en un entorno local
     let isLocalEnvironment = true; // Cambia a `false` cuando despliegues en IC
 
@@ -85,6 +88,16 @@ actor HechoenOaxacaBackend {
         return Principal.fromBlob(Blob.fromArray(randomBytes));
     };
 
+    // Función auxiliar para buscar un usuario en la lista de usuarios
+    func buscarUsuario(principalId: Principal): ?Text {
+        for ((id, rol) in usuarios.vals()) {
+            if (id == principalId) {
+                return ?rol;
+            };
+        };
+        return null;
+    };
+
     // ✅ REGISTRAR USUARIO (CON DEPURACIÓN)
     public shared({caller}) func registrarUsuario(
         nombreCompleto: Text,
@@ -98,18 +111,6 @@ actor HechoenOaxacaBackend {
         if (Principal.isAnonymous(caller) or caller == Principal.fromText("aaaaa-aa")) {
             Debug.print("🚨 Error: Intento de registro con usuario NO autenticado.");
             return #err("🚨 Error: Usuario no autenticado. Inicia sesión antes de registrarte.");
-        };
-
-        // Determinar el Principal global
-        let globalPrincipal = if (Principal.toText(caller) == "aaaaa-aa") {
-            return #err("🚨 Error: Usuario anónimo no permitido.");
-        } else if (Principal.toText(caller) == "2vxsx-fae" or isLocalEnvironment) {
-            caller; // En local, usa directamente `caller`
-        } else {
-            switch (identity_links.get(caller)) {
-                case (?principal) principal;
-                case null caller;
-            };
         };
 
         // 🔹 Convertir el rol a minúsculas y validar
@@ -126,13 +127,13 @@ actor HechoenOaxacaBackend {
         };
 
         // ✅ Revisar si el usuario ya está registrado
-        switch (usuarios_table.get(globalPrincipal)) {
+        switch (usuarios_table.get(caller)) {
             case (?usuarioExistente) {
-                Debug.print("✅ Usuario ya existe con Principal: " # Principal.toText(globalPrincipal));
+                Debug.print("✅ Usuario ya existe con Principal: " # Principal.toText(caller));
                 return #ok(usuarioExistente);
             };
             case null {
-                Debug.print("🆕 Registrando nuevo usuario con Principal: " # Principal.toText(globalPrincipal));
+                Debug.print("🆕 Registrando nuevo usuario con Principal: " # Principal.toText(caller));
 
                 let usuario: Usuario = {
                     nombreCompleto = nombreCompleto;
@@ -141,18 +142,26 @@ actor HechoenOaxacaBackend {
                     rol = parsedRol;
                 };
 
-                usuarios_table.put(globalPrincipal, usuario);
-                roles_table.put(globalPrincipal, parsedRol);
-                balances.put(globalPrincipal, 0);
+                usuarios_table.put(caller, usuario);
+                roles_table.put(caller, parsedRol);
+                balances.put(caller, 0);
 
                 // Vincular NFID Principal con el Principal Global
                 if (not isLocalEnvironment) {
-                    identity_links.put(caller, globalPrincipal);
+                    identity_links.put(caller, caller);
                 };
+
+                // Agregar usuario a la lista estable de usuarios
+                usuarios := Array.append(usuarios, [(caller, rol)]);
 
                 return #ok(usuario);
             };
         };
+    };
+
+    // ✅ Verificar si un usuario está registrado
+    public shared query func verificarUsuario(principalId: Principal): async ?Text {
+        return buscarUsuario(principalId);
     };
 
     // ✅ OBTENER ROL DEL USUARIO (CON DEPURACIÓN)
@@ -165,26 +174,14 @@ actor HechoenOaxacaBackend {
             return #err("🚨 Usuario no autenticado.");
         };
 
-        let globalPrincipal = switch (identity_links.get(usuario)) {
-            case (?principal) {
-                Debug.print("🔹 Principal almacenado en identity_links: " # Principal.toText(principal));
-                principal;
-            };
-            case null {
-                Debug.print("🔹 Usando Principal proporcionado: " # Principal.toText(usuario));
-                usuario;
-            };
-        };
-
-        Debug.print("🔹 Principal final consultado en roles_table: " # Principal.toText(globalPrincipal));
-
-        switch (roles_table.get(globalPrincipal)) {
+        // 🔹 Obtener el rol del usuario
+        switch (roles_table.get(usuario)) {
             case (?#Artesano) { return #ok("Artesano"); };
             case (?#Intermediario) { return #ok("Intermediario"); };
             case (?#Cliente) { return #ok("Cliente"); };
             case (?#Administrador) { return #ok("Administrador"); };
             case null { 
-                Debug.print("❌ Error: Usuario no registrado con Principal: " # Principal.toText(globalPrincipal));
+                Debug.print("❌ Error: Usuario no registrado con Principal: " # Principal.toText(usuario));
                 return #err("Usuario no registrado."); 
             };
         };

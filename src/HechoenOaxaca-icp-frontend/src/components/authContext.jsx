@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { Principal } from "@dfinity/principal";
 import { Actor, HttpAgent } from "@dfinity/agent";
 import { idlFactory } from "../../../declarations/HechoenOaxaca-icp-backend";
@@ -22,14 +22,13 @@ export const useAuthContext = () => {
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userRole, setUserRole] = useState(null);
   const [principalId, setPrincipalId] = useState(null);
   const [identity, setIdentity] = useState(null);
+  const [userRole, setUserRole] = useState(null);
 
   const navigate = useNavigate();
 
-  // 🔹 Obtener el backend actor autenticado con la identidad correcta
+  // ✅ Obtener el backend actor autenticado con la identidad correcta
   const getBackendActor = async (identity) => {
     if (!identity) {
       console.error("❌ No se pudo obtener identidad.");
@@ -41,8 +40,15 @@ export const AuthProvider = ({ children }) => {
         ? "https://ic0.app"
         : "http://127.0.0.1:4943";
 
-    // 🔹 Asegurar que el agente usa la identidad autenticada
-    const agent = new HttpAgent({ host, identity });
+    // ✅ Asegurar que el agente usa la identidad autenticada desde el inicio
+    const agent = new HttpAgent({ identity, host });
+
+    try {
+      console.log("✅ Identidad asignada correctamente:", identity.getPrincipal().toText());
+    } catch (error) {
+      console.error("❌ Error asignando identidad al agente:", error);
+      return null;
+    }
 
     if (process.env.DFX_NETWORK !== "ic") {
       try {
@@ -51,52 +57,25 @@ export const AuthProvider = ({ children }) => {
         console.log("✅ Clave raíz obtenida correctamente.");
       } catch (err) {
         console.error("❌ Error obteniendo la clave raíz:", err);
+        return null;
       }
     }
 
     return Actor.createActor(idlFactory, { agent, canisterId });
   };
 
-  // 🔹 Obtener el rol del usuario desde el backend
-  const fetchUserRole = async (identity, principal) => {
-    try {
-      if (!principal) {
-        console.warn("⚠️ No hay principal para verificar rol.");
-        return;
-      }
-
-      console.log("🔹 Obteniendo backend actor...");
-      const backendActor = await getBackendActor(identity);
-      if (!backendActor) {
-        console.error("❌ No se pudo obtener backend actor.");
-        return;
-      }
-
-      console.log("🎭 Consultando rol en el backend...");
-      const principalObj = Principal.fromText(principal);
-      const userRoleResponse = await backendActor.getRolUsuario(principalObj);
-
-      if (userRoleResponse && typeof userRoleResponse === "string" && userRoleResponse !== "NoAsignado") {
-        console.log("✅ Rol asignado:", userRoleResponse);
-        localStorage.setItem("userRole", userRoleResponse.toLowerCase());
-        setUserRole(userRoleResponse.toLowerCase());
-      } else {
-        console.warn("⚠️ Rol no encontrado, redirigiendo al registro.");
-        localStorage.removeItem("userRole");
-        setUserRole(null);
-        navigate("/registro");
-      }
-    } catch (err) {
-      console.error("❌ Error al obtener el rol del usuario:", err);
-    }
-  };
-
-  // 🔹 Manejar inicio de sesión con NFID
-  const handleLogin = async () => {
+  // ✅ Manejar inicio de sesión con NFID
+  const handleLogin = async (retry = false) => {
     try {
       console.log("🔄 Creando AuthClient...");
       const { AuthClient } = await import("@dfinity/auth-client");
       const authClient = await AuthClient.create();
+
+      if (!retry) {
+        console.log("🔄 Cerrando sesión anterior...");
+        await authClient.logout();
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
 
       console.log("🔄 Intentando iniciar sesión con NFID...");
       await authClient.login({
@@ -104,17 +83,32 @@ export const AuthProvider = ({ children }) => {
         derivationOrigin: window.location.origin,
         maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 días
         windowOpenerFeatures: "width=500,height=700",
-        forceVerify: true,
+        forceVerify: false,
       });
 
-      if (!(await authClient.isAuthenticated())) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      const isAuthenticated = await authClient.isAuthenticated();
+      console.log("🔍 Estado de autenticación:", isAuthenticated);
+
+      if (!isAuthenticated) {
         console.error("🚨 No se pudo autenticar al usuario.");
+        if (!retry) {
+          console.log("🔄 Reintentando autenticación...");
+          return handleLogin(true);
+        }
         alert("Error de autenticación. Intenta nuevamente.");
         return;
       }
 
       console.log("✅ Autenticación exitosa, obteniendo identidad...");
       const identity = authClient.getIdentity();
+      if (!identity) {
+        console.error("❌ No se pudo obtener identidad válida.");
+        alert("Error de identidad. Intenta nuevamente.");
+        return;
+      }
+
       const principal = identity.getPrincipal().toText();
 
       if (!principal || principal === "2vxsx-fae") {
@@ -128,81 +122,47 @@ export const AuthProvider = ({ children }) => {
       setIdentity(identity);
       setIsAuthenticated(true);
 
-      // 🔹 Guardar solo el Principal en localStorage
       localStorage.setItem("principalId", principal);
 
-      await fetchUserRole(identity, principal);
+      console.log("🔹 Obteniendo backend actor...");
+      const backendActor = await getBackendActor(identity);
+      if (!backendActor) {
+        console.error("❌ No se pudo obtener backend actor.");
+        return;
+      }
+
+      // ✅ Verificar si el usuario ya está registrado
+      try {
+        console.log("🔎 Verificando si el usuario ya está registrado...");
+        const userRoleResponse = await backendActor.getRolUsuario(Principal.fromText(principal));
+
+        if (userRoleResponse && typeof userRoleResponse === "string" && userRoleResponse !== "NoAsignado") {
+          console.log("✅ Usuario ya registrado con rol:", userRoleResponse);
+          setUserRole(userRoleResponse);
+          navigate(`/${userRoleResponse.toLowerCase()}-dashboard`);
+        } else {
+          console.log("🔄 Usuario no registrado, redirigiendo a formulario de registro...");
+          navigate("/registro");
+        }
+      } catch (error) {
+        console.error("❌ Error consultando usuario:", error);
+        if (error.toString().includes("403")) {
+          console.error("🚨 Error 403: Reautenticando y reintentando...");
+          alert("⚠️ No tienes permisos para acceder al canister. Contacta al administrador.");
+        }
+      }
     } catch (error) {
       console.error("❌ Error en la autenticación:", error);
       alert("Error de autenticación. Ver consola para más detalles.");
     }
   };
 
-  // 🔹 Verificar sesión al cargar la página
-  useEffect(() => {
-    const checkSession = async () => {
-      console.log("🔄 Verificando sesión almacenada...");
-      const storedPrincipal = localStorage.getItem("principalId");
-      const storedRole = localStorage.getItem("userRole");
-
-      const { AuthClient } = await import("@dfinity/auth-client");
-      const authClient = await AuthClient.create();
-
-      if (storedPrincipal) {
-        console.log("✅ Sesión activa detectada.");
-        setPrincipalId(storedPrincipal);
-        setIsAuthenticated(true);
-
-        // 🔹 Reconstruir la identidad usando el Principal almacenado
-        const identity = authClient.getIdentity();
-        setIdentity(identity);
-
-        await fetchUserRole(identity, storedPrincipal);
-      } else {
-        console.log("🔹 No se encontró sesión activa. Limpiando...");
-        localStorage.clear();
-        setIsAuthenticated(false);
-        setPrincipalId(null);
-        setIdentity(null);
-      }
-
-      if (storedRole) {
-        console.log("✅ Rol encontrado en almacenamiento:", storedRole);
-        setUserRole(storedRole);
-      }
-
-      setIsLoading(false);
-    };
-
-    checkSession();
-  }, []);
-
-  // 🔹 Manejar cierre de sesión
-  const handleDisconnect = async () => {
-    console.log("🔄 Cerrando sesión...");
-
-    localStorage.clear();
-    sessionStorage.clear();
-    setIsAuthenticated(false);
-    setUserRole(null);
-    setPrincipalId(null);
-    setIdentity(null);
-
-    const { AuthClient } = await import("@dfinity/auth-client");
-    const authClient = await AuthClient.create();
-    await authClient.logout();
-
-    window.location.href = "/";
-  };
-
   return (
     <AuthContext.Provider
       value={{
         isAuthenticated,
-        isLoading,
-        userRole,
         principalId,
-        handleDisconnect,
+        userRole,
         handleLogin,
       }}
     >

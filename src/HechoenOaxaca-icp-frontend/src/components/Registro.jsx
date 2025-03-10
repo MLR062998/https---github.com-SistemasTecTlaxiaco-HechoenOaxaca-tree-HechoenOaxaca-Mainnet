@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Actor, HttpAgent } from "@dfinity/agent";
 import { Principal } from "@dfinity/principal";
+import { Actor, HttpAgent } from "@dfinity/agent";
 import { idlFactory, canisterId } from "../../../declarations/HechoenOaxaca-icp-backend";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
@@ -13,20 +13,18 @@ const Registro = ({ onRegister }) => {
     nombreCompleto: "",
     lugarOrigen: "",
     telefono: "",
-    rol: "artesano",
+    rol: "artesano", // Rol por defecto
   });
 
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  // ✅ Manejo del formulario
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ✅ Manejo del registro del usuario
   const handleRegister = async (event) => {
     event.preventDefault();
     setIsSubmitting(true);
@@ -37,13 +35,6 @@ const Registro = ({ onRegister }) => {
       if (!principal) throw new Error("No se encontró el principalId en localStorage.");
 
       const principalObj = Principal.fromText(principal);
-      console.log("📌 Principal obtenido:", principalObj.toText());
-
-      // 🔹 Verifica si es anónimo
-      if (principalObj.toText() === "2vxsx-fae") {
-        throw new Error("El usuario no está autenticado correctamente.");
-      }
-
       const agent = new HttpAgent({ host: "http://127.0.0.1:4943" });
       if (process.env.NODE_ENV === "development") await agent.fetchRootKey();
 
@@ -64,23 +55,9 @@ const Registro = ({ onRegister }) => {
 
       if ("ok" in result) {
         console.log("✅ Usuario registrado correctamente:", result.ok);
-        
-        let userRole = result.ok.rol;
-
-        // Si el rol es un objeto, extraer la clave
-        if (typeof userRole === "object") {
-          const roleKeys = Object.keys(userRole);
-          if (roleKeys.length > 0) {
-            userRole = roleKeys[0].toLowerCase();
-          } else {
-            throw new Error("No se pudo obtener el rol del usuario.");
-          }
-        }
-
-        localStorage.setItem("userRole", userRole);
-        if (typeof onRegister === "function") onRegister(userRole);
-
-        navigate(`/${userRole}-dashboard`);
+        localStorage.setItem("userRole", formData.rol);
+        if (typeof onRegister === "function") onRegister(formData.rol);
+        navigate(`/${formData.rol.toLowerCase()}-dashboard`);
       } else {
         console.error("❌ Respuesta inesperada del backend:", result);
         setError("Error inesperado al registrar el usuario.");
