@@ -36,18 +36,17 @@ $shadow-color: rgba(0, 0, 0, 0.2);
 
 // Botones generales
 .custom-btn {
-  font-size: 1.1rem;
-  font-weight: 500;
-  padding: 10px 20px;
-  border-radius: 10px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  justify-content: center;
-  color: $white;
+  gap: 5px;
+  padding: 10px 15px;
+  border-radius: 8px;
   text-decoration: none;
+  transition: background-color 0.3s ease;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: $white;
   box-shadow: 0 4px 6px $shadow-color;
-  transition: all 0.3s ease;
 
   &:hover {
     transform: translateY(-2px);
@@ -62,17 +61,16 @@ $shadow-color: rgba(0, 0, 0, 0.2);
   }
 
   &.btn-secondary {
-    background-color: $success-color;
+    background-color: $secondary-color;
     &:hover {
-      background-color: darken($success-color, 5%);
+      background-color: darken($secondary-color, 5%);
     }
   }
 
   &.wallet-btn {
-    background-color: lighten($primary-color, 5%);
-    color: $text-dark;
+    background-color: $success-color;
     &:hover {
-      background-color: darken($primary-color, 10%);
+      background-color: darken($success-color, 5%);
     }
   }
 
@@ -80,6 +78,14 @@ $shadow-color: rgba(0, 0, 0, 0.2);
     background-color: $danger-color;
     &:hover {
       background-color: darken($danger-color, 5%);
+    }
+  }
+
+  &.btn-perfil {
+    background-color: #17a2b8; /* Color azul claro para el botón de perfil */
+    color: white;
+    &:hover {
+      background-color: #138496; /* Color azul oscuro al hacer hover */
     }
   }
 }
