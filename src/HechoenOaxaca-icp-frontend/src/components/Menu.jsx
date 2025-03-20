@@ -6,7 +6,7 @@ import { useAuthContext } from "./authContext";
 import "../index.scss";
 
 const Menu = () => {
-  const { isAuthenticated, userRole, handleDisconnect, handleLogin } = useAuthContext();
+  const { isAuthenticated, userRole, handleLogout, handleLogin } = useAuthContext();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   return (
@@ -17,20 +17,17 @@ const Menu = () => {
             Hecho en Oaxaca
           </Link>
           <div className="custom-links-container">
-            {/* ✅ Mostrar botón de "Iniciar Sesión" si NO está autenticado */}
             {!isAuthenticated ? (
               <button className="custom-button login-button" onClick={handleLogin}>
                 Iniciar Sesión
               </button>
             ) : (
               <>
-                {/* ✅ Mostrar Dashboard según el rol del usuario */}
                 {userRole === "cliente" && <Link to="/cliente-dashboard">Dashboard Cliente</Link>}
                 {userRole === "artesano" && <Link to="/artesano-dashboard">Dashboard Artesano</Link>}
                 {userRole === "intermediario" && (
                   <Link to="/intermediario-dashboard">Dashboard Intermediario</Link>
                 )}
-                {/* ✅ Botón de cerrar sesión */}
                 <button className="custom-button logout-button" onClick={() => setShowLogoutModal(true)}>
                   Salir
                 </button>
@@ -40,7 +37,6 @@ const Menu = () => {
         </div>
       </nav>
 
-      {/* ✅ Modal de Confirmación de Cierre de Sesión */}
       <Modal show={showLogoutModal} onHide={() => setShowLogoutModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Confirmación</Modal.Title>
@@ -54,7 +50,7 @@ const Menu = () => {
             variant="danger"
             onClick={() => {
               setShowLogoutModal(false);
-              handleDisconnect();
+              handleLogout();
             }}
           >
             Salir
@@ -65,5 +61,4 @@ const Menu = () => {
   );
 };
 
-// ✅ Exportación por defecto para evitar errores en `App.jsx`
 export default Menu;
