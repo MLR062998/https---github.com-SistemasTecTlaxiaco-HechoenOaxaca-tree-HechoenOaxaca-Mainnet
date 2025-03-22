@@ -26,9 +26,10 @@ export const AuthProvider = ({ children }) => {
   const [identity, setIdentity] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const navigate = useNavigate();
 
+  // 🔹 Obtener el backend actor autenticado con la identidad correcta
   const getBackendActor = useCallback(async (identity) => {
     if (!identity || identity.getPrincipal().isAnonymous()) {
       console.error("❌ Error: El usuario no está autenticado.");
@@ -47,7 +48,9 @@ export const AuthProvider = ({ children }) => {
 
     if (process.env.DFX_NETWORK !== "ic") {
       try {
+        console.log("🔄 Obteniendo clave raíz en desarrollo...");
         await agent.fetchRootKey();
+        console.log("✅ Clave raíz obtenida correctamente.");
       } catch (err) {
         console.error("❌ Error obteniendo la clave raíz:", err);
         return null;
@@ -57,6 +60,7 @@ export const AuthProvider = ({ children }) => {
     return Actor.createActor(idlFactory, { agent, canisterId: CANISTER_ID });
   }, []);
 
+  // 🔹 Manejar inicio de sesión con NFID
   const handleLogin = async (retry = false) => {
     try {
       setIsLoading(true);
@@ -65,6 +69,7 @@ export const AuthProvider = ({ children }) => {
       const authClient = await AuthClient.create();
 
       if (!retry) {
+        console.log("🔄 Cerrando sesión anterior...");
         await authClient.logout();
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
@@ -73,21 +78,28 @@ export const AuthProvider = ({ children }) => {
       await authClient.login({
         identityProvider: "https://nfid.one/authenticate",
         derivationOrigin: window.location.origin,
-        maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000),
+        maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 días
         windowOpenerFeatures: "width=500,height=700",
         forceVerify: false,
       });
 
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      if (!(await authClient.isAuthenticated())) {
+      const isAuthenticated = await authClient.isAuthenticated();
+      console.log("🔍 Estado de autenticación:", isAuthenticated);
+
+      if (!isAuthenticated) {
         console.error("🚨 No se pudo autenticar al usuario.");
-        if (!retry) return handleLogin(true);
+        if (!retry) {
+          console.log("🔄 Reintentando autenticación...");
+          return handleLogin(true);
+        }
         alert("Error de autenticación. Intenta nuevamente.");
         setIsLoading(false);
         return;
       }
 
+      console.log("✅ Autenticación exitosa, obteniendo identidad...");
       const identity = authClient.getIdentity();
       if (!identity) {
         console.error("❌ No se pudo obtener identidad válida.");
@@ -95,6 +107,8 @@ export const AuthProvider = ({ children }) => {
         setIsLoading(false);
         return;
       }
+
+      console.log("🔍 Principal obtenido de NFID:", identity.getPrincipal().toText());
 
       const principal = identity.getPrincipal().toText();
       if (!principal || principal === "2vxsx-fae") {
@@ -110,6 +124,42 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       localStorage.setItem("principalId", principal);
 
+      console.log("🔹 Obteniendo backend actor...");
+      const backendActor = await getBackendActor(identity);
+      if (!backendActor) {
+        console.error("❌ No se pudo obtener backend actor.");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        console.log("🔎 Verificando si el usuario ya está registrado...");
+        const usuarioExiste = await backendActor.verificarUsuario(Principal.fromText(principal));
+
+        if (!usuarioExiste) {
+          console.log("🔹 Usuario no registrado. Procediendo al registro...");
+          await backendActor.registrarUsuario();
+        } else {
+          console.log("✅ Usuario ya registrado, saltando registro.");
+        }
+
+        const userRoleResponse = await backendActor.getRolUsuario(Principal.fromText(principal));
+
+        if (userRoleResponse && typeof userRoleResponse === "string" && userRoleResponse !== "NoAsignado") {
+          console.log("✅ Usuario registrado con rol:", userRoleResponse);
+          setUserRole(userRoleResponse);
+          navigate(`/${userRoleResponse.toLowerCase()}-dashboard`);
+        } else {
+          console.log("🔄 Usuario sin rol asignado, redirigiendo a /registro...");
+          navigate("/registro");
+        }
+      } catch (error) {
+        console.error("❌ Error consultando usuario:", error);
+        if (error.toString().includes("403")) {
+          console.error("🚨 Error 403: No autorizado.");
+          alert("⚠️ No tienes permisos para acceder al canister. Contacta al administrador.");
+        }
+      }
     } catch (error) {
       console.error("❌ Error en la autenticación:", error);
       alert("Error de autenticación. Ver consola para más detalles.");

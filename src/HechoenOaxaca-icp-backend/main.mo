@@ -111,102 +111,109 @@ actor HechoenOaxacaBackend {
         return false;
     };
 
-    
-           // ✅ REGISTRAR USUARIO (CON DEPURACIÓN)
-public shared({caller}) func registrarUsuario(
-    nombreCompleto: Text,
-    lugarOrigen: Text,
-    telefono: Text,
-    rol: Text
-): async Result.Result<Usuario, Text> {
-    Debug.print("📌 Intento de registro con Principal: " # Principal.toText(caller));
+    // ✅ REGISTRAR USUARIO (CON DEPURACIÓN)
+    public shared({caller}) func registrarUsuario(
+        nombreCompleto: Text,
+        lugarOrigen: Text,
+        telefono: Text,
+        rol: Text
+    ): async Result.Result<Usuario, Text> {
+        Debug.print("📌 Intento de registro con Principal: " # Principal.toText(caller));
 
-    // ❗ RECHAZAR USUARIO NO AUTENTICADO
-    if (Principal.isAnonymous(caller) or caller == Principal.fromText("aaaaa-aa")) {
-        Debug.print("🚨 Error: Intento de registro con usuario NO autenticado.");
-        return #err("🚨 Error: Usuario no autenticado. Inicia sesión antes de registrarte.");
-    };
-
-    // 🔹 Validar que los campos no estén vacíos
-    if (Text.size(nombreCompleto) == 0 or Text.size(lugarOrigen) == 0 or Text.size(telefono) == 0) {
-        Debug.print("🚨 Error: Campos vacíos en el registro.");
-        return #err("🚨 Error: Todos los campos son obligatorios.");
-    };
-
-    // 🔹 Validar formato de teléfono (10 dígitos numéricos)
-    if (Text.size(telefono) != 10) {
-        Debug.print("🚨 Error: El teléfono debe tener exactamente 10 dígitos.");
-        return #err("🚨 Error: El teléfono debe tener exactamente 10 dígitos.");
-    };
-
-    // Verificar que todos los caracteres sean dígitos
-    let isNumeric = func (c: Char): Bool {
-        return c >= '0' and c <= '9';
-    };
-
-    for (char in Text.toIter(telefono)) {
-        if (not isNumeric(char)) {
-            Debug.print("🚨 Error: El teléfono solo puede contener dígitos numéricos.");
-            return #err("🚨 Error: El teléfono solo puede contener dígitos numéricos.");
+        // ❗ RECHAZAR USUARIO NO AUTENTICADO
+        if (Principal.isAnonymous(caller) or caller == Principal.fromText("aaaaa-aa")) {
+            Debug.print("🚨 Error: Intento de registro con usuario NO autenticado.");
+            return #err("🚨 Error: Usuario no autenticado. Inicia sesión antes de registrarte.");
         };
-    };
 
-    // 🔹 Convertir el rol a minúsculas y validar
-    let lowerRol = Text.toLowercase(rol);
-    let parsedRol = switch (lowerRol) {
-        case "artesano" #Artesano;
-        case "intermediario" #Intermediario;
-        case "cliente" #Cliente;
-        case "administrador" #Administrador;
-        case _ {
-            Debug.print("🚨 Error: Rol inválido proporcionado: " # rol);
-            return #err("🚨 Rol inválido: " # rol);
+        // 🔹 Validar que los campos no estén vacíos
+        if (Text.size(nombreCompleto) == 0 or Text.size(lugarOrigen) == 0 or Text.size(telefono) == 0) {
+            Debug.print("🚨 Error: Campos vacíos en el registro.");
+            return #err("🚨 Error: Todos los campos son obligatorios.");
         };
-    };
 
-    // ✅ Revisar si el usuario ya está registrado
-    switch (usuarios_table.get(caller)) {
-        case (?usuarioExistente) {
-            Debug.print("✅ Usuario ya existe con Principal: " # Principal.toText(caller));
-            return #ok(usuarioExistente);
+        // 🔹 Validar formato de teléfono (10 dígitos numéricos)
+        if (Text.size(telefono) != 10) {
+            Debug.print("🚨 Error: El teléfono debe tener exactamente 10 dígitos.");
+            return #err("🚨 Error: El teléfono debe tener exactamente 10 dígitos.");
         };
-        case null {
-            Debug.print("🆕 Registrando nuevo usuario con Principal: " # Principal.toText(caller));
 
-            let usuario: Usuario = {
-                nombreCompleto = nombreCompleto;
-                lugarOrigen = lugarOrigen;
-                telefono = telefono;
-                rol = parsedRol;
+        // Verificar que todos los caracteres sean dígitos
+        let isNumeric = func (c: Char): Bool {
+            return c >= '0' and c <= '9';
+        };
+
+        for (char in Text.toIter(telefono)) {
+            if (not isNumeric(char)) {
+                Debug.print("🚨 Error: El teléfono solo puede contener dígitos numéricos.");
+                return #err("🚨 Error: El teléfono solo puede contener dígitos numéricos.");
             };
+        };
 
-            usuarios_table.put(caller, usuario);
-            roles_table.put(caller, parsedRol);
-            balances.put(caller, 0);
-
-            // Vincular NFID Principal con el Principal Global
-            if (not isLocalEnvironment) {
-                identity_links.put(caller, caller);
+        // 🔹 Convertir el rol a minúsculas y validar
+        let lowerRol = Text.toLowercase(rol);
+        let parsedRol = switch (lowerRol) {
+            case "artesano" #Artesano;
+            case "intermediario" #Intermediario;
+            case "cliente" #Cliente;
+            case "administrador" #Administrador;
+            case _ {
+                Debug.print("🚨 Error: Rol inválido proporcionado: " # rol);
+                return #err("🚨 Rol inválido: " # rol);
             };
+        };
 
-            // Agregar usuario a la lista estable de usuarios
-            usuarios := Array.append(usuarios, [(caller, rol)]);
-
-            // Agregar el usuario a la lista de usuarios registrados
-            if (not contienePrincipal(usuariosRegistrados, caller)) {
-                usuariosRegistrados := Array.append(usuariosRegistrados, [caller]);
+        // ✅ Revisar si el usuario ya está registrado
+        switch (usuarios_table.get(caller)) {
+            case (?usuarioExistente) {
+                Debug.print("✅ Usuario ya existe con Principal: " # Principal.toText(caller));
+                return #ok(usuarioExistente);
             };
+            case null {
+                Debug.print("🆕 Registrando nuevo usuario con Principal: " # Principal.toText(caller));
 
-            return #ok(usuario);
+                let usuario: Usuario = {
+                    nombreCompleto = nombreCompleto;
+                    lugarOrigen = lugarOrigen;
+                    telefono = telefono;
+                    rol = parsedRol;
+                };
+
+                usuarios_table.put(caller, usuario);
+                roles_table.put(caller, parsedRol);
+                balances.put(caller, 0);
+
+                // Vincular NFID Principal con el Principal Global
+                if (not isLocalEnvironment) {
+                    identity_links.put(caller, caller);
+                };
+
+                // Agregar usuario a la lista estable de usuarios
+                usuarios := Array.append(usuarios, [(caller, rol)]);
+
+                // Agregar el usuario a la lista de usuarios registrados
+                if (not contienePrincipal(usuariosRegistrados, caller)) {
+                    usuariosRegistrados := Array.append(usuariosRegistrados, [caller]);
+                };
+
+                return #ok(usuario);
+            };
         };
     };
-};
 
     // ✅ Verificar si un usuario está registrado
     public shared query func verificarUsuario(principalId: Principal): async Result.Result<Usuario, Text> {
+        Debug.print("🔍 Verificando usuario con Principal: " # Principal.toText(principalId));
+
         switch (usuarios_table.get(principalId)) {
-            case (?usuario) { return #ok(usuario); };
-            case null { return #err("Usuario no registrado"); };
+            case (?usuario) {
+                Debug.print("✅ Usuario encontrado: " # usuario.nombreCompleto);
+                return #ok(usuario);
+            };
+            case null {
+                Debug.print("❌ Usuario no registrado.");
+                return #err("Usuario no registrado");
+            };
         };
     };
 
