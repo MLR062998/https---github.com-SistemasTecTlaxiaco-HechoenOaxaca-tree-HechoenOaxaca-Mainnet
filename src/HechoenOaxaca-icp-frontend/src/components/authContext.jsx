@@ -5,8 +5,8 @@ import { idlFactory } from "../../../declarations/HechoenOaxaca-icp-backend";
 import { useNavigate } from "react-router-dom";
 
 // Definir Canister IDs
-const LOCAL_CANISTER_ID = "br5f7-7uaaa-aaaaa-qaaca-cai";
-const MAINNET_CANISTER_ID = "bkyz2-fmaaa-aaaaa-qaaaq-cai";
+const LOCAL_CANISTER_ID = "br5f7-7uaaa-aaaaa-qaaca-cai"; // Canister ID local
+const MAINNET_CANISTER_ID = "bkyz2-fmaaa-aaaaa-qaaaq-cai"; // Canister ID en Mainnet
 const CANISTER_ID = process.env.DFX_NETWORK === "ic" ? MAINNET_CANISTER_ID : LOCAL_CANISTER_ID;
 
 // Crear contexto de autenticación
@@ -46,6 +46,7 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
 
+    // Solo obtener la clave raíz en desarrollo (entorno local)
     if (process.env.DFX_NETWORK !== "ic") {
       try {
         console.log("🔄 Obteniendo clave raíz en desarrollo...");
@@ -76,7 +77,7 @@ export const AuthProvider = ({ children }) => {
 
       console.log("🔄 Iniciando sesión con NFID...");
       await authClient.login({
-        identityProvider: "https://nfid.one/authenticate",
+        identityProvider: "https://nfid.one/authenticate", // URL de NFID en Mainnet
         derivationOrigin: window.location.origin,
         maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 días
         windowOpenerFeatures: "width=500,height=700",

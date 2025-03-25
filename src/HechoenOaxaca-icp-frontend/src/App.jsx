@@ -26,11 +26,11 @@ const client = createClient({
   },
   providers: [
     new InternetIdentity({
-      providerUrl: "http://be2us-64aaa-aaaaa-qaabq-cai.localhost:4943/",
+      providerUrl: "https://identity.ic0.app",  // URL de Internet Identity en Mainnet
     }),
   ],
   globalProviderConfig: {
-    dev: true,
+    dev: false,  // Cambia a false para Mainnet
   },
 });
 

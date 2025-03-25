@@ -66,7 +66,7 @@ actor HechoenOaxacaBackend {
     stable var usuariosRegistrados : [Principal] = [];
 
     // Constante para determinar si estamos en un entorno local
-    let isLocalEnvironment = true; // Cambia a false cuando despliegues en IC
+    let isLocalEnvironment = false; // Cambia a false para Mainnet
 
     // Función auxiliar para convertir Float a Nat
     func floatToNat(f: Float): Nat {
