@@ -1,7 +1,8 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { Connect2ICProvider } from "@connect2ic/react";
-import { createClient, InternetIdentity } from "@connect2ic/core";
+import { createClient } from "@connect2ic/core";
+import { InternetIdentity } from "@connect2ic/core/providers/internet-identity";
 import * as Productos_backend from "declarations/HechoenOaxaca-icp-backend";
 import { AuthProvider } from "./components/authContext";
 import Menu from "./components/Menu";
