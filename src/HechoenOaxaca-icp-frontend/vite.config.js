@@ -1,45 +1,61 @@
-import { fileURLToPath, URL } from 'url';
-import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import environment from 'vite-plugin-environment';
+import { join } from 'path';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '../../.env' });
+dotenv.config();
 
 export default defineConfig({
-  build: {
-    emptyOutDir: true,
-    rollupOptions: {
-      // Añadir @connect2ic/core como dependencia externa si sigue dando problemas
-      external: ['@connect2ic/core'],
-    },
-  },
+  plugins: [
+    react(),
+    environment({
+      CANISTER_ID_HECHOENOAXACA_ICP_BACKEND: process.env.CANISTER_ID_HECHOENOAXACA_ICP_BACKEND || '',
+      CANISTER_ID_HECHOENOAXACA_ICP_FRONTEND: process.env.CANISTER_ID_HECHOENOAXACA_ICP_FRONTEND || '',
+      CANISTER_ID_INTERNET_IDENTITY: process.env.CANISTER_ID_INTERNET_IDENTITY || '',
+      DFX_NETWORK: process.env.DFX_NETWORK || '',
+      DFX_VERSION: process.env.DFX_VERSION || ''
+    }),
+  ],
   optimizeDeps: {
+    include: [
+      '@connect2ic/core',
+      '@connect2ic/react',
+      '@dfinity/agent',
+      '@dfinity/auth-client',
+      '@nfid/identitykit'
+    ],
     esbuildOptions: {
       define: {
         global: 'globalThis',
       },
     },
   },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:4943',
-        changeOrigin: true,
-      },
+  build: {
+    emptyOutDir: true,
+    commonjsOptions: {
+      transformMixedEsModules: true,
+      include: [/node_modules/],
+    },
+    rollupOptions: {
+      external: [],
+      output: {
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('@connect2ic')) return 'connect2ic';
+            if (id.includes('@dfinity')) return 'dfinity';
+            if (id.includes('react')) return 'react';
+            return 'vendor';
+          }
+        }
+      }
     },
   },
-  plugins: [
-    react(),
-    environment('all', { prefix: 'CANISTER_' }),
-    environment('all', { prefix: 'DFX_' }),
-  ],
   resolve: {
-    alias: [
-      {
-        find: 'declarations',
-        replacement: fileURLToPath(new URL('../declarations', import.meta.url)),
-      },
-    ],
+    alias: {
+      '@connect2ic/core': join(__dirname, 'node_modules/@connect2ic/core'),
+      'declarations': join(__dirname, '../declarations'),
+      '@dfinity/principal': join(__dirname, 'node_modules/@dfinity/principal/lib/cjs/index.js'),
+    },
   },
 });

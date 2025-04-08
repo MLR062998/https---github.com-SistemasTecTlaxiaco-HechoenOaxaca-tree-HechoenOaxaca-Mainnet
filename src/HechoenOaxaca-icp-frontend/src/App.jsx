@@ -1,11 +1,9 @@
-// App.js
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { Connect2ICProvider } from "@connect2ic/react";
-import { createClient } from "@connect2ic/core";
-import { InternetIdentity } from "@connect2ic/core/providers/internet-identity";
+import { createClient, InternetIdentity } from "@connect2ic/core";
 import * as Productos_backend from "declarations/HechoenOaxaca-icp-backend";
-import { AuthProvider } from "./components/authContext";  
+import { AuthProvider } from "./components/authContext";
 import Menu from "./components/Menu";
 import CrearProducto from "./components/CrearProducto";
 import Products from "./components/Products";
@@ -26,19 +24,19 @@ const client = createClient({
   },
   providers: [
     new InternetIdentity({
-      providerUrl: "https://identity.ic0.app",  // URL de Internet Identity en Mainnet
+      providerUrl: "https://identity.ic0.app",
     }),
   ],
   globalProviderConfig: {
-    dev: false,  // Cambia a false para Mainnet
+    dev: false,
   },
 });
 
 function App() {
   return (
     <Connect2ICProvider client={client}>
-      <Router>  {/*  Mover Router arriba */}
-        <AuthProvider>  {/*  Ahora AuthProvider está dentro de Router */}
+      <Router>
+        <AuthProvider>
           <Menu />
           <Routes>
             <Route path="/" element={<Home />} />
@@ -54,7 +52,7 @@ function App() {
             <Route path="/carrito" element={<CarritoDeCliente />} />
             <Route path="/nfid-login" element={<NfidLogin />} />
           </Routes>
-        </AuthProvider>  {/*  Cierra AuthProvider */}
+        </AuthProvider>
       </Router>
     </Connect2ICProvider>
   );

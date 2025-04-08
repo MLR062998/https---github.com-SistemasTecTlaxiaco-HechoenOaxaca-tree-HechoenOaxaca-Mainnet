@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { Principal } from "@dfinity/principal";
-import { Actor, HttpAgent } from "@dfinity/agent";
+import { HttpAgent, Actor } from "@dfinity/agent";
+import { AuthClient } from '@dfinity/auth-client/lib/cjs/index'; // Cambio clave aquí
 import { idlFactory } from "../../../declarations/HechoenOaxaca-icp-backend";
 import { useNavigate } from "react-router-dom";
 
@@ -66,7 +67,6 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
       console.log("🔄 Creando AuthClient...");
-      const { AuthClient } = await import("@dfinity/auth-client");
       const authClient = await AuthClient.create();
 
       if (!retry) {
