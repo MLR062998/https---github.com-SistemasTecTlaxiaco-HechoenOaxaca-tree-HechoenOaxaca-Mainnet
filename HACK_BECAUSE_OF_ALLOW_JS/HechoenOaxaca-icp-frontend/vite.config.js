@@ -2,10 +2,18 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import environment from 'vite-plugin-environment';
 import { join } from 'path';
+import dotenv from 'dotenv';
+dotenv.config();
 export default defineConfig({
     plugins: [
         react(),
-        environment(['CANISTER_', 'DFX_']), // Versión optimizada
+        environment({
+            CANISTER_ID_HECHOENOAXACA_ICP_BACKEND: process.env.CANISTER_ID_HECHOENOAXACA_ICP_BACKEND || '',
+            CANISTER_ID_HECHOENOAXACA_ICP_FRONTEND: process.env.CANISTER_ID_HECHOENOAXACA_ICP_FRONTEND || '',
+            CANISTER_ID_INTERNET_IDENTITY: process.env.CANISTER_ID_INTERNET_IDENTITY || '',
+            DFX_NETWORK: process.env.DFX_NETWORK || '',
+            DFX_VERSION: process.env.DFX_VERSION || ''
+        }),
     ],
     optimizeDeps: {
         include: [
@@ -28,7 +36,7 @@ export default defineConfig({
             include: [/node_modules/],
         },
         rollupOptions: {
-            external: [], // Elimina la externalización de connect2ic
+            external: [],
             output: {
                 manualChunks: (id) => {
                     if (id.includes('node_modules')) {

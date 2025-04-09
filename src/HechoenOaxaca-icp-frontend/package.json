@@ -1,36 +1,48 @@
 {
-  "name": "HechoenOaxaca-icp-frontend",
-  "private": true,
-  "version": "0.0.0",
+  "name": "hechoen-oaxaca-icp",
   "type": "module",
-  "scripts": {
-    "setup": "npm i && dfx canister create HechoenOaxaca-icp-backend && dfx generate HechoenOaxaca-icp-backend && dfx deploy",
-    "start": "vite --port 3000",
-    "prebuild": "dfx generate",
-    "build": "tsc && vite build",
-    "format": "prettier --write \"src/**/*.{json,js,jsx,ts,tsx,css,scss}\""
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
   },
+  "scripts": {
+    "prebuild": "dfx generate && ./fix-did-imports.sh",
+    "pretest": "npm run prebuild --workspaces --if-present",
+    "start": "npm start --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "dev": "vite",
+    "build": "tsc && vite build"
+  },
+  "workspaces": [
+    "src/HechoenOaxaca-icp-frontend"
+  ],
   "dependencies": {
-    "@connect2ic/core": "^0.2.0-beta.24",
-    "@connect2ic/react": "^0.2.0-beta.24",
-    "@dfinity/agent": "^1.4.0",
-    "@dfinity/auth-client": "^2.1.2",
-    "@dfinity/candid": "^1.4.0",
-    "@dfinity/principal": "^1.4.0",
-    "@nfid/embed": "^0.10.3",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.27.0"
+    "@astrox/sdk-web": "^0.1.41",
+    "@astrox/sdk-webview": "^0.1.41",
+    "@connect2ic/core": "0.4.0",
+    "@connect2ic/react": "0.4.0",
+    "@dfinity/agent": "^0.15.5",
+    "@dfinity/auth-client": "^0.19.3",
+    "@dfinity/candid": "^0.19.3",
+    "@dfinity/identity": "^0.19.3",
+    "@remix-run/router": "1.23.0",
+    "bootstrap": "5.3.3",
+    "neverthrow": "^8.2.0",
+    "react": "18.2.0",
+    "react-bootstrap": "2.10.9",
+    "react-dom": "18.2.0",
+    "react-icons": "5.4.0",
+    "react-router": "7.4.1",
+    "react-router-dom": "7.4.1",
+    "sass": "1.82.0",
+    "vite": "6.2.4"
   },
   "devDependencies": {
-    "@types/node": "^18.19.86",
-    "@types/react": "^18.2.14",
-    "@types/react-dom": "^18.2.6",
-    "@vitejs/plugin-react": "^4.0.1",
-    "dotenv": "^16.4.7",
-    "sass": "^1.63.6",
-    "typescript": "^5.1.3",
-    "vite": "^6.2.3",
-    "vite-plugin-environment": "^1.1.3"
+    "@types/node": "^22.13.14",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.5.1",
+    "rollup": "4.38.0",
+    "tailwindcss": "4.0.0",
+    "typescript": "5.8.2"
   }
 }

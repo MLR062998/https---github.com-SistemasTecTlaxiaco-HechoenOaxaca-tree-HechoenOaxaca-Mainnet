@@ -1,9 +1,10 @@
 {
+  "name": "hechoen-oaxaca-icp",
+  "type": "module",
   "engines": {
     "node": ">=16.0.0",
     "npm": ">=7.0.0"
   },
-  "name": "hechoen-oaxaca-icp",
   "scripts": {
     "prebuild": "dfx generate && ./fix-did-imports.sh",
     "pretest": "npm run prebuild --workspaces --if-present",
@@ -12,26 +13,24 @@
     "dev": "vite",
     "build": "tsc && vite build"
   },
-  "type": "module",
   "workspaces": [
     "src/HechoenOaxaca-icp-frontend"
   ],
   "dependencies": {
     "@astrox/sdk-web": "^0.1.41",
     "@astrox/sdk-webview": "^0.1.41",
-    "@connect2ic/core": "^0.1.6",
-    "@connect2ic/react": "^0.1.4",
+    "@connect2ic/core": "0.4.0",
+    "@connect2ic/react": "0.4.0",
     "@dfinity/agent": "2.4.0",
     "@dfinity/auth-client": "2.4.0",
     "@dfinity/candid": "2.4.0",
     "@dfinity/identity": "2.4.0",
-    "@nfid/identitykit": "1.0.10",
     "@remix-run/router": "1.23.0",
     "bootstrap": "5.3.3",
     "neverthrow": "^8.2.0",
-    "react": "18.3.1",
+    "react": "18.2.0",
     "react-bootstrap": "2.10.9",
-    "react-dom": "18.3.1",
+    "react-dom": "18.2.0",
     "react-icons": "5.4.0",
     "react-router": "7.4.1",
     "react-router-dom": "7.4.1",

@@ -15,16 +15,14 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["vite/client", "node"],
+    "types": ["vite/client", "node", "react"],
     "baseUrl": ".",
     "paths": {
       "@connect2ic/core": ["./node_modules/@connect2ic/core"],
-      "@connect2ic/core/*": ["./node_modules/@connect2ic/core/*"],
       "@connect2ic/react": ["./node_modules/@connect2ic/react"],
       "@dfinity/agent": ["./node_modules/@dfinity/agent"],
       "@dfinity/auth-client": ["./node_modules/@dfinity/auth-client"],
       "@dfinity/identity": ["./node_modules/@dfinity/identity"],
-      "@nfid/identitykit": ["./node_modules/@nfid/identitykit"],
       "declarations/*": ["../declarations/*"],
       "src/*": ["./src/*"]
     },

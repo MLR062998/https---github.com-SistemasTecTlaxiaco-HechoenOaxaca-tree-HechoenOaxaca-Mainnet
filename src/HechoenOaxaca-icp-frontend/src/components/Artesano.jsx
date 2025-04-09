@@ -1,29 +1,32 @@
 import React, { useEffect, useState } from "react";
-import { Link, Route, Routes, useNavigate } from "react-router-dom";
+import { Route, Routes, useNavigate } from "react-router-dom";
+import { HechoenOaxaca_icp_backend } from "../../../declarations/HechoenOaxaca-icp-backend";
 import CrearProducto from "./CrearProducto";
 import Products from "./Products";
 import Wallet from "./Wallet";
-import { FaBell, FaWallet, FaPlusCircle, FaShoppingCart, FaUser } from "react-icons/fa";
-import Modal from 'react-bootstrap/Modal';
-import Button from 'react-bootstrap/Button';
-import Form from 'react-bootstrap/Form';
-import { HechoenOaxaca_icp_backend } from "../../../declarations/HechoenOaxaca-icp-backend";
+import Modal from "react-bootstrap/Modal";
+import Button from "react-bootstrap/Button";
+import Form from "react-bootstrap/Form";
+import DashboardLayout from "./DashboardLayout";
+import { useConnect } from "@connect2ic/react";
 
-const Artesano = ({ principalId }) => {
+const Artesano = () => {
   const [showEditModal, setShowEditModal] = useState(false);
+  const [perfil, setPerfil] = useState(null);
   const [editFormData, setEditFormData] = useState({
     nombreCompleto: "",
     lugarOrigen: "",
     telefono: "",
   });
-  const [perfil, setPerfil] = useState(null);
-  const navigate = useNavigate();
 
-  // Cargar el perfil del artesano al iniciar
+  const navigate = useNavigate();
+  const { principal } = useConnect();
+
   useEffect(() => {
     const fetchPerfil = async () => {
+      if (!principal) return;
       try {
-        const perfilRes = await HechoenOaxaca_icp_backend.obtenerPerfil(principalId);
+        const perfilRes = await HechoenOaxaca_icp_backend.obtenerPerfil(principal);
         setPerfil(perfilRes);
         setEditFormData({
           nombreCompleto: perfilRes.nombreCompleto,
@@ -36,85 +39,53 @@ const Artesano = ({ principalId }) => {
     };
 
     fetchPerfil();
-  }, [principalId]);
+  }, [principal]);
 
-  // Función para abrir el modal de edición
-  const handleEditClick = () => {
-    setShowEditModal(true);
-  };
-
-  // Función para cerrar el modal de edición
-  const handleCloseEditModal = () => {
-    setShowEditModal(false);
-  };
-
-  // Función para manejar cambios en el formulario de edición
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditFormData({ ...editFormData, [name]: value });
   };
 
-  // Función para guardar los cambios del perfil
   const handleSaveChanges = async () => {
     try {
       const result = await HechoenOaxaca_icp_backend.actualizarPerfil(
-        principalId,
+        principal,
         editFormData.nombreCompleto,
         editFormData.lugarOrigen,
         editFormData.telefono
       );
 
       if ("ok" in result) {
-        setPerfil(editFormData); // Actualizar el estado del perfil
-        setShowEditModal(false); // Cerrar el modal
+        setPerfil(editFormData);
+        setShowEditModal(false);
       } else {
-        console.error("Error al actualizar el perfil:", result.err);
+        console.error("Error al actualizar perfil:", result.err);
       }
     } catch (error) {
-      console.error("Error al actualizar el perfil:", error);
+      console.error("Error al actualizar perfil:", error);
     }
   };
 
   return (
-    <div className="artesano-dashboard min-h-screen bg-gray-50 px-4 py-6">
-      <header className="dashboard-header text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Bienvenido, Artesano</h1>
-        <p className="text-gray-600 mt-2">
-          Gestiona tus productos, añade nuevos a tu inventario, y más.
-        </p>
-      </header>
-
-      {/* Opciones principales */}
-      <div className="artesano-options flex justify-center gap-4 mb-8">
-        <Link to="/nuevo-producto" className="custom-btn btn-primary">
-          <FaPlusCircle size={20} />
-          Crear Producto
-        </Link>
-        <Link to="/mis-productos" className="custom-btn btn-secondary">
-          <FaShoppingCart size={20} />
-          Mis Productos
-        </Link>
-        <Link to="/wallet" className="custom-btn wallet-btn">
-          <FaWallet size={20} />
-          Wallet
-        </Link>
-        <Link to="/notificaciones" className="custom-btn notifications-btn">
-          <FaBell size={20} />
-          Notificaciones
-        </Link>
-        <Button className="custom-btn btn-perfil" onClick={handleEditClick}>
-          <FaUser size={20} /> Perfil
-        </Button>
+    <DashboardLayout title="Bienvenido, Artesano">
+      <div className="text-right mb-4">
+        <Button onClick={() => setShowEditModal(true)}>Editar Perfil</Button>
       </div>
 
-      {/* Modal de edición de perfil */}
-      <Modal show={showEditModal} onHide={handleCloseEditModal}>
+      <Routes>
+        <Route path="/nuevo-producto" element={<CrearProducto />} />
+        <Route path="/mis-productos" element={<Products />} />
+        <Route path="/wallet" element={<Wallet />} />
+        <Route path="/notificaciones" element={<div>Notificaciones en construcción</div>} />
+      </Routes>
+
+      <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Editar Perfil</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
-            <Form.Group className="mb-3">
+            <Form.Group>
               <Form.Label>Nombre Completo</Form.Label>
               <Form.Control
                 type="text"
@@ -123,7 +94,7 @@ const Artesano = ({ principalId }) => {
                 onChange={handleEditChange}
               />
             </Form.Group>
-            <Form.Group className="mb-3">
+            <Form.Group>
               <Form.Label>Lugar de Origen</Form.Label>
               <Form.Control
                 type="text"
@@ -132,7 +103,7 @@ const Artesano = ({ principalId }) => {
                 onChange={handleEditChange}
               />
             </Form.Group>
-            <Form.Group className="mb-3">
+            <Form.Group>
               <Form.Label>Teléfono</Form.Label>
               <Form.Control
                 type="tel"
@@ -144,7 +115,7 @@ const Artesano = ({ principalId }) => {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseEditModal}>
+          <Button variant="secondary" onClick={() => setShowEditModal(false)}>
             Cancelar
           </Button>
           <Button variant="primary" onClick={handleSaveChanges}>
@@ -152,17 +123,7 @@ const Artesano = ({ principalId }) => {
           </Button>
         </Modal.Footer>
       </Modal>
-
-      {/* Configuración de rutas */}
-      <div className="artesano-routes container mx-auto">
-        <Routes>
-          <Route path="/nuevo-producto" element={<CrearProducto />} />
-          <Route path="/mis-productos" element={<Products />} />
-          <Route path="/wallet" element={<Wallet />} />
-          <Route path="/notificaciones" element={<div>Notificaciones en construcción</div>} />
-        </Routes>
-      </div>
-    </div>
+    </DashboardLayout>
   );
 };
 
