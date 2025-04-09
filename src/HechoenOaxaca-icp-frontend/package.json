@@ -1,31 +1,20 @@
 {
-  "name": "hechoen-oaxaca-icp",
+  "name": "HechoenOaxaca-icp-frontend",
+  "version": "0.0.1",
+  "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=7.0.0"
-  },
   "scripts": {
-    "prebuild": "dfx generate && ./fix-did-imports.sh",
-    "pretest": "npm run prebuild --workspaces --if-present",
-    "start": "npm start --workspaces --if-present",
-    "test": "npm test --workspaces --if-present",
     "dev": "vite",
-    "build": "tsc && vite build"
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
-  "workspaces": [
-    "src/HechoenOaxaca-icp-frontend"
-  ],
   "dependencies": {
-    "@astrox/sdk-web": "^0.1.41",
-    "@astrox/sdk-webview": "^0.1.41",
-    "@connect2ic/core": "0.4.0",
-    "@connect2ic/react": "0.4.0",
-    "@dfinity/agent": "^0.15.5",
-    "@dfinity/auth-client": "^0.19.3",
-    "@dfinity/candid": "^0.19.3",
-    "@dfinity/identity": "^0.19.3",
-    "@remix-run/router": "1.23.0",
+    "@connect2ic/core": "0.2.0-beta.16",
+    "@connect2ic/react": "0.2.0-beta.16",
+    "@dfinity/agent": "2.4.0",
+    "@dfinity/auth-client": "2.4.0",
+    "@dfinity/candid": "2.4.0",
+    "@dfinity/identity": "2.4.0",
     "bootstrap": "5.3.3",
     "neverthrow": "^8.2.0",
     "react": "18.2.0",
@@ -34,15 +23,14 @@
     "react-icons": "5.4.0",
     "react-router": "7.4.1",
     "react-router-dom": "7.4.1",
-    "sass": "1.82.0",
-    "vite": "6.2.4"
+    "sass": "1.82.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.14",
     "autoprefixer": "10.4.20",
     "postcss": "8.5.1",
-    "rollup": "4.38.0",
     "tailwindcss": "4.0.0",
-    "typescript": "5.8.2"
+    "typescript": "5.8.2",
+    "vite": "6.2.4"
   }
 }
