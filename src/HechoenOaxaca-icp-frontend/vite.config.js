@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export default defineConfig({
+  root: __dirname, // <- ESTA ES LA CLAVE
   plugins: [
     react(),
     environment({
