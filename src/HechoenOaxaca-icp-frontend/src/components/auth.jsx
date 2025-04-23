@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useConnect } from "@connect2ic/react";
 import { Principal } from "@dfinity/principal";
 import { useNavigate } from "react-router-dom";
-import { HechoenOaxaca_icp_backend } from "../declarations/HechoenOaxaca-icp-backend";
+import { HechoenOaxaca_icp_backend } from "declarations/HechoenOaxaca-icp-backend";
 
 export function useAuthFlow() {
   const { isConnected, principal, activeProvider } = useConnect();

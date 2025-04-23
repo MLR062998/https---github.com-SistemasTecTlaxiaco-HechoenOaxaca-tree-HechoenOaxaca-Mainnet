@@ -1,42 +1,37 @@
 {
   "name": "hechoen-oaxaca-icp",
   "type": "module",
+  "private": true,
   "engines": {
     "node": ">=16.0.0",
     "npm": ">=7.0.0"
   },
   "scripts": {
-    "prebuild": "dfx generate && ./fix-did-imports.sh",
+    "prebuild": "node scripts/patch-rollup-ast.cjs && dfx generate && ./fix-did-imports.sh",
     "pretest": "npm run prebuild --workspaces --if-present",
     "start": "npm start --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
-    "dev": "vite",
-    "build": "tsc --skipLibCheck && vite build"
+    "dev": "npm run dev --workspace=src/HechoenOaxaca-icp-frontend",
+    "build": "npm run build --workspace=src/HechoenOaxaca-icp-frontend",
+    "postinstall": "node scripts/patch-rollup-ast.cjs"
   },
   "workspaces": [
     "src/HechoenOaxaca-icp-frontend"
   ],
   "dependencies": {
-    "@astrox/sdk-web": "0.1.41",
-    "@astrox/sdk-webview": "0.1.41",
-    "@connect2ic/core": "0.2.0-beta.24",
-    "@connect2ic/react": "0.2.0-beta.24",
-    "@dfinity/agent": "2.4.0",
-    "@dfinity/auth-client": "2.4.0",
-    "@dfinity/candid": "2.4.0",
-    "@dfinity/identity": "2.4.0",
-    "@remix-run/router": "1.23.0",
+    "@connect2ic/core": "^0.2.0-beta.24",
+    "@connect2ic/react": "^0.2.0-beta.24",
     "react": "18.2.0",
     "react-dom": "18.2.0"
   },
   "devDependencies": {
-    "@types/react": "18.2.45",
-    "@types/react-dom": "18.2.18",
-    "typescript": "5.3.3",
-    "vite": "5.1.4"
+    "@types/node": "^20.11.25",
+    "@types/react": "^18.2.14",
+    "@types/react-dom": "^18.2.7",
+    "rollup": "2.70.1",
+    "vite": "^2.9.16"
   },
   "overrides": {
-    "@types/react": "18.2.45",
-    "@types/react-dom": "18.2.18"
+    "rollup": "2.70.1"
   }
 }

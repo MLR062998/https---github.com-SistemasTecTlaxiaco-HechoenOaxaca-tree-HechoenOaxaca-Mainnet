@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useConnect } from "@connect2ic/react";
 import { Principal } from "@dfinity/principal";
-import { HechoenOaxaca_icp_backend } from "../../declarations/HechoenOaxaca-icp-backend";
+import { HechoenOaxaca_icp_backend } from "declarations/HechoenOaxaca-icp-backend";
 
 export function useWalletInfo() {
   const { isConnected, principal } = useConnect();

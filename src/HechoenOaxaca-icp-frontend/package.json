@@ -6,31 +6,27 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --skipLibCheck && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prebuild": "./debug-vite.sh"
   },
   "dependencies": {
+    "@connect2ic/core": "0.2.0-beta.24",
+    "@connect2ic/react": "0.2.0-beta.24",
     "@dfinity/agent": "2.4.0",
     "@dfinity/auth-client": "2.4.0",
-    "@dfinity/candid": "2.4.0",
-    "@dfinity/identity": "2.4.0",
     "bootstrap": "5.3.3",
     "lodash": "^4.17.21",
     "neverthrow": "8.2.0",
-    "react": "18.2.0",
     "react-bootstrap": "2.10.0",
-    "react-dom": "18.2.0",
     "react-icons": "4.11.0",
     "react-router": "6.22.3",
     "react-router-dom": "6.22.3",
     "sass": "1.71.1"
   },
   "devDependencies": {
-    "@connect2ic/core": "^0.2.0-beta.24",
-    "@connect2ic/react": "^0.2.0-beta.24",
-    "@types/node": "20.11.19",
-    "@types/react": "^18.2.55",
-    "@types/react-dom": "^18.2.18",
-    "@types/react-icons": "3.0.0",
+    "@types/node": "^20.17.30",
+    "@types/react": "^18.3.20",
+    "@types/react-dom": "^18.3.6",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "10.4.16",
     "dotenv": "^16.4.7",

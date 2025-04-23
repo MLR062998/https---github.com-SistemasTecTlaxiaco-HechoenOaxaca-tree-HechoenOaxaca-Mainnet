@@ -1,14 +1,10 @@
+// src/App.jsx
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { Connect2ICProvider } from "@connect2ic/react";
 import { createClient } from "@connect2ic/core";
-import { InternetIdentity } from "@connect2ic/core/providers/internet-identity";
-import { NFIDProvider } from "@connect2ic/core/providers/nfid";
-import { PlugProvider } from "@connect2ic/core/providers/plug";
-
+import { PlugWallet, NFIDWallet } from "@connect2ic/core/wallets";
 import * as Productos_backend from "declarations/HechoenOaxaca-icp-backend";
-
-// ✅ Nuevo hook de autenticación automática
 import { useAuthFlow } from "./components/auth";
 
 import Menu from "./components/Menu";
@@ -28,10 +24,9 @@ const client = createClient({
   canisters: {
     "HechoenOaxaca-icp-backend": Productos_backend,
   },
-  providers: [
-    new InternetIdentity(),
-    new NFIDProvider(),
-    new PlugProvider(),
+  wallets: [
+    new PlugWallet(),
+    new NFIDWallet(),
   ],
   globalProviderConfig: {
     dev: true,
@@ -39,7 +34,7 @@ const client = createClient({
 });
 
 function AppContent() {
-  useAuthFlow(); // 🔐 Auto-login y redirección por rol
+  useAuthFlow();
 
   return (
     <>

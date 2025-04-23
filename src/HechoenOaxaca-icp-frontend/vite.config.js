@@ -1,3 +1,5 @@
+// src/HechoenOaxaca-icp-frontend/vite.config.js
+import patchRollupPlugin from './vite-plugin-force-native-cjs.js';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import environment from 'vite-plugin-environment';
@@ -7,15 +9,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export default defineConfig({
-  root: __dirname, // <- ESTA ES LA CLAVE
+  root: __dirname,
   plugins: [
+    patchRollupPlugin(),
     react(),
     environment({
       CANISTER_ID_HECHOENOAXACA_ICP_BACKEND: process.env.CANISTER_ID_HECHOENOAXACA_ICP_BACKEND || '',
       CANISTER_ID_HECHOENOAXACA_ICP_FRONTEND: process.env.CANISTER_ID_HECHOENOAXACA_ICP_FRONTEND || '',
-      CANISTER_ID_INTERNET_IDENTITY: process.env.CANISTER_ID_INTERNET_IDENTITY || '',
       DFX_NETWORK: process.env.DFX_NETWORK || '',
-      DFX_VERSION: process.env.DFX_VERSION || ''
     }),
   ],
   optimizeDeps: {
@@ -23,13 +24,13 @@ export default defineConfig({
       '@connect2ic/core',
       '@connect2ic/react',
       '@dfinity/agent',
-      '@dfinity/auth-client',
-      '@nfid/identitykit'
+      '@dfinity/auth-client'
     ],
     esbuildOptions: {
       define: {
         global: 'globalThis',
       },
+      format: 'cjs'
     },
   },
   build: {
@@ -39,7 +40,6 @@ export default defineConfig({
       include: [/node_modules/],
     },
     rollupOptions: {
-      external: [],
       output: {
         manualChunks: (id) => {
           if (id.includes('node_modules')) {
@@ -54,9 +54,19 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@connect2ic/core': join(__dirname, 'node_modules/@connect2ic/core'),
+      'rollup/dist/es/shared/parseAst.js': join(__dirname, '../../node_modules/rollup/dist/es/shared/parseAst.js'),
+      'rollup/dist/es/shared/parseAst': join(__dirname, '../../node_modules/rollup/dist/es/shared/parseAst.js'),
+      '../../native.js': join(__dirname, '../../node_modules/rollup/dist/native.cjs'),
+      'native.js': join(__dirname, '../../node_modules/rollup/dist/native.cjs'),
+      'rollup/dist/native.js': join(__dirname, '../../node_modules/rollup/dist/native.cjs'),
+  
+      // otros alias...
       'declarations': join(__dirname, '../declarations'),
-      '@dfinity/principal': join(__dirname, 'node_modules/@dfinity/principal/lib/cjs/index.js'),
+      '@connect2ic/core': join(__dirname, '../../node_modules/@connect2ic/core'),
+      '@connect2ic/react': join(__dirname, '../../node_modules/@connect2ic/react'),
+      '@dfinity/agent': join(__dirname, '../../node_modules/@dfinity/agent'),
+      '@dfinity/auth-client': join(__dirname, '../../node_modules/@dfinity/auth-client'),
     },
   },
+  
 });
