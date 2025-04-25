@@ -3,7 +3,6 @@ import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { Connect2ICProvider } from "@connect2ic/react";
 import { createClient } from "@connect2ic/core";
-import { PlugWallet, NFIDWallet } from "@connect2ic/core/wallets";
 import * as Productos_backend from "declarations/HechoenOaxaca-icp-backend";
 import { useAuthFlow } from "./components/auth";
 
@@ -20,14 +19,11 @@ import IntermediarioDashboard from "./components/Intermediario";
 import NotificacionesCliente from "./components/NotificacionesCliente";
 import CarritoDeCliente from "./components/CarritoDeCliente";
 
+// ⚠️ NO declares wallets manualmente en esta versión
 const client = createClient({
   canisters: {
     "HechoenOaxaca-icp-backend": Productos_backend,
   },
-  wallets: [
-    new PlugWallet(),
-    new NFIDWallet(),
-  ],
   globalProviderConfig: {
     dev: true,
   },

@@ -1,7 +1,6 @@
 {
   "name": "hechoenoaxaca-icp-frontend",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,31 +8,22 @@
     "preview": "vite preview",
     "prebuild": "./debug-vite.sh"
   },
-  "dependencies": {
-    "@connect2ic/core": "0.2.0-beta.24",
-    "@connect2ic/react": "0.2.0-beta.24",
-    "@dfinity/agent": "2.4.0",
-    "@dfinity/auth-client": "2.4.0",
-    "bootstrap": "5.3.3",
-    "lodash": "^4.17.21",
-    "neverthrow": "8.2.0",
-    "react-bootstrap": "2.10.0",
-    "react-icons": "4.11.0",
-    "react-router": "6.22.3",
-    "react-router-dom": "6.22.3",
-    "sass": "1.71.1"
-  },
   "devDependencies": {
     "@types/node": "^20.17.30",
     "@types/react": "^18.3.20",
     "@types/react-dom": "^18.3.6",
-    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "10.4.16",
     "dotenv": "^16.4.7",
     "postcss": "8.4.35",
+    "sass": "^1.87.0",
     "tailwindcss": "3.4.1",
     "typescript": "5.3.3",
-    "vite": "5.1.4",
     "vite-plugin-environment": "^1.1.3"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.3",
+    "react-bootstrap": "^2.10.0",
+    "react-icons": "^4.11.0",
+    "react-router-dom": "^6.22.3"
   }
 }
