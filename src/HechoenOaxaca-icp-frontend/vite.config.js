@@ -24,16 +24,19 @@ export default defineConfig({
       '@connect2ic/core',
       '@connect2ic/react',
       '@dfinity/agent',
-      '@dfinity/auth-client'
+      '@dfinity/auth-client',
+      '@dfinity/candid',
+      '@dfinity/identity'
     ],
     esbuildOptions: {
       define: {
         global: 'globalThis',
       },
-      format: 'cjs'
+      target: 'es2020'
     },
   },
   build: {
+    target: 'es2020',
     emptyOutDir: true,
     commonjsOptions: {
       transformMixedEsModules: true,
@@ -59,14 +62,13 @@ export default defineConfig({
       '../../native.js': join(__dirname, '../../node_modules/rollup/dist/native.cjs'),
       'native.js': join(__dirname, '../../node_modules/rollup/dist/native.cjs'),
       'rollup/dist/native.js': join(__dirname, '../../node_modules/rollup/dist/native.cjs'),
-  
-      // otros alias...
       'declarations': join(__dirname, '../declarations'),
       '@connect2ic/core': join(__dirname, '../../node_modules/@connect2ic/core'),
       '@connect2ic/react': join(__dirname, '../../node_modules/@connect2ic/react'),
       '@dfinity/agent': join(__dirname, '../../node_modules/@dfinity/agent'),
       '@dfinity/auth-client': join(__dirname, '../../node_modules/@dfinity/auth-client'),
+      '@dfinity/candid': join(__dirname, '../../node_modules/@dfinity/candid'),
+      '@dfinity/identity': join(__dirname, '../../node_modules/@dfinity/identity'),
     },
   },
-  
 });
