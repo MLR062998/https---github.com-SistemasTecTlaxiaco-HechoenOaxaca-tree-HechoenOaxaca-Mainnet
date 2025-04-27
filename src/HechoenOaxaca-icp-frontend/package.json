@@ -24,6 +24,12 @@
     "bootstrap": "^5.3.3",
     "react-bootstrap": "^2.10.0",
     "react-icons": "^4.11.0",
-    "react-router-dom": "^6.22.3"
-  }
+    "react-router-dom": "^6.22.3",
+    "@dfinity/agent": "^2.4.1",
+    "@dfinity/auth-client": "^2.4.1",
+    "@dfinity/candid": "^2.4.1",
+    "@dfinity/identity": "^2.4.1",
+    "buffer": "^6.0.3",
+    "stream-browserify": "^3.0.0"
+  }  
 }

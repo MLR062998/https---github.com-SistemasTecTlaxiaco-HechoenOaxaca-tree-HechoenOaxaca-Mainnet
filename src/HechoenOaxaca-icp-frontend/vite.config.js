@@ -1,4 +1,3 @@
-// src/HechoenOaxaca-icp-frontend/vite.config.js
 import patchRollupPlugin from './vite-plugin-force-native-cjs.js';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -52,11 +51,21 @@ export default defineConfig({
             return 'vendor';
           }
         }
+      },
+      treeshake: {
+        moduleSideEffects: (id) => {
+          if (id.includes('@dfinity/candid') || id.includes('@dfinity/agent')) {
+            return true; // NO hacer tree-shake
+          }
+          return false;
+        }
       }
     },
   },
   resolve: {
     alias: {
+      'buffer': 'buffer/',
+      'stream': 'stream-browserify',
       'rollup/dist/es/shared/parseAst.js': join(__dirname, '../../node_modules/rollup/dist/es/shared/parseAst.js'),
       'rollup/dist/es/shared/parseAst': join(__dirname, '../../node_modules/rollup/dist/es/shared/parseAst.js'),
       '../../native.js': join(__dirname, '../../node_modules/rollup/dist/native.cjs'),

@@ -1,4 +1,3 @@
-// src/HechoenOaxaca-icp-frontend/tsconfig.json
 {
   "compilerOptions": {
     "target": "ESNext",
