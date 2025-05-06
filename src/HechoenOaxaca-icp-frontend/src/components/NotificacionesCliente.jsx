@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { HechoenOaxaca_icp_backend } from "../../../declarations/HechoenOaxaca-icp-backend";
+import { HechoenOaxacaIcpBackend } from "../../../declarations/HechoenOaxaca-icp-backend";
 import Button from "react-bootstrap/Button";
 import ListGroup from "react-bootstrap/ListGroup";
 
@@ -11,7 +11,7 @@ const NotificacionesCliente = ({ principalId }) => {
   const fetchNotificaciones = async () => {
     try {
       setLoading(true);
-      const notificacionesRes = await HechoenOaxaca_icp_backend.getNotificacionesByCliente(
+      const notificacionesRes = await HechoenOaxacaIcpBackend.getNotificacionesByCliente(
         principalId
       );
       setNotificaciones(notificacionesRes);

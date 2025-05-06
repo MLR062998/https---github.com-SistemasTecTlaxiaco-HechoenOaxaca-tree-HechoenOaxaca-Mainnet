@@ -1,10 +1,16 @@
 {
+  "version": 1,
+  "output_env_file": ".env",
   "canisters": {
     "HechoenOaxaca-icp-backend": {
       "type": "motoko",
       "main": "src/HechoenOaxaca-icp-backend/main.mo",
       "candid": "src/HechoenOaxaca-icp-backend/HechoenOaxaca-icp-backend.did",
-      "wasm": "src/HechoenOaxaca-icp-backend/HechoenOaxaca-icp-backend.wasm",
+      "remote": {
+        "id": {
+          "ic": "cqup7-hqaaa-aaaai-q3wca-cai"
+        }
+      },
       "initial_cycles": 100000000000,
       "settings": {
         "controllers": [
@@ -14,21 +20,26 @@
       }
     },
     "HechoenOaxaca-icp-frontend": {
-      "dependencies": ["HechoenOaxaca-icp-backend"],
       "type": "assets",
+      "dependencies": ["HechoenOaxaca-icp-backend"],
       "source": ["src/HechoenOaxaca-icp-frontend/dist"],
-      "build": "npm run build"
+      "build": "npm run build",
+      "remote": {
+        "id": {
+          "ic": "cxvjl-kiaaa-aaaai-q3wcq-cai"
+        }
+      }
     },
     "internet_identity": {
+      "type": "custom",
       "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
+      "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz",
       "frontend": {},
       "remote": {
         "id": {
           "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
         }
-      },
-      "type": "custom",
-      "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz"
+      }
     }
   },
   "defaults": {
@@ -37,12 +48,10 @@
       "packtool": ""
     }
   },
-  "output_env_file": ".env",
-  "version": 1,
   "networks": {
     "ic": {
-      "providers": ["https://icp-api.io"],
-      "type": "persistent"
+      "type": "persistent",
+      "providers": ["https://icp-api.io"]
     }
   }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useConnect } from "@connect2ic/react";
 import { Principal } from "@dfinity/principal";
-import { HechoenOaxaca_icp_backend } from "declarations/HechoenOaxaca-icp-backend";
+import { HechoenOaxacaIcpBackend } from "declarations/HechoenOaxaca-icp-backend";
 
 export function useWalletInfo() {
   const { isConnected, principal } = useConnect();
@@ -15,8 +15,8 @@ export function useWalletInfo() {
 
       try {
         const p = Principal.fromText(principal);
-        const s = await HechoenOaxaca_icp_backend.obtenerSaldo();
-        const r = await HechoenOaxaca_icp_backend.getRolUsuario(p);
+        const s = await HechoenOaxacaIcpBackend.obtenerSaldo();
+        const r = await HechoenOaxacaIcpBackend.getRolUsuario(p);
 
         setSaldo(s);
         setRol(r);

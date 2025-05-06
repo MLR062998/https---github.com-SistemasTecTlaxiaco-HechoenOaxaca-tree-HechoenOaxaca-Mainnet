@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthClient } from "@dfinity/auth-client";
 import { Actor } from "@dfinity/agent";
-import { HechoenOaxaca_icp_backend } from "../../../declarations/HechoenOaxaca-icp-backend";
+import { createActor } from "../../../declarations/HechoenOaxaca-icp-backend";
+const HechoenOaxacaIcpBackend = createActor(import.meta.env.VITE_BACKEND_CANISTER_ID);
 import { Button, Card, Form, Alert, Container, Row, Col } from "react-bootstrap";
 
 const Wallet = () => {
@@ -21,10 +22,10 @@ const Wallet = () => {
       if (authClient.isAuthenticated()) {
         const identity = authClient.getIdentity();
         setPrincipalId(identity.getPrincipal().toText());
-        Actor.agentOf(HechoenOaxaca_icp_backend).replaceIdentity(identity);
+        Actor.agentOf(HechoenOaxacaIcpBackend).replaceIdentity(identity);
 
         // Obtener el saldo real
-        const realBalance = await HechoenOaxaca_icp_backend.obtenerSaldo();
+        const realBalance = await HechoenOaxacaIcpBackend.obtenerSaldo();
         setBalance(realBalance);
       }
     };
@@ -43,7 +44,7 @@ const Wallet = () => {
       onSuccess: () => {
         const identity = authClient.getIdentity();
         setPrincipalId(identity.getPrincipal().toText());
-        Actor.agentOf(HechoenOaxaca_icp_backend).replaceIdentity(identity);
+        Actor.agentOf(HechoenOaxacaIcpBackend).replaceIdentity(identity);
       },
     });
   };
@@ -55,8 +56,8 @@ const Wallet = () => {
     }
 
     try {
-      await HechoenOaxaca_icp_backend.recargarSaldo(recargaMonto);
-      const nuevoSaldo = await HechoenOaxaca_icp_backend.obtenerSaldo();
+      await HechoenOaxacaIcpBackend.recargarSaldo(recargaMonto);
+      const nuevoSaldo = await HechoenOaxacaIcpBackend.obtenerSaldo();
       setBalance(nuevoSaldo);
       setSuccess(`Recarga exitosa: ${recargaMonto} ICP añadidos.`);
       setError("");
@@ -73,8 +74,8 @@ const Wallet = () => {
     }
 
     try {
-      await HechoenOaxaca_icp_backend.transferirSaldo(destinatarioId, transferirMonto);
-      const nuevoSaldo = await HechoenOaxaca_icp_backend.obtenerSaldo();
+      await HechoenOaxacaIcpBackend.transferirSaldo(destinatarioId, transferirMonto);
+      const nuevoSaldo = await HechoenOaxacaIcpBackend.obtenerSaldo();
       setBalance(nuevoSaldo);
       setSuccess(`Transferencia exitosa: ${transferirMonto} ICP enviados.`);
       setError("");

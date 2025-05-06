@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HechoenOaxaca_icp_backend } from "../../../declarations/HechoenOaxaca-icp-backend";
+import { HechoenOaxacaIcpBackend } from "../../../declarations/HechoenOaxaca-icp-backend";
 import Table from "react-bootstrap/Table";
 import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
@@ -17,7 +17,7 @@ const Administrador = ({ principalId }) => {
   const fetchUsuarios = async () => {
     try {
       setLoading(true);
-      const usuariosRes = await HechoenOaxaca_icp_backend.listarUsuarios();
+      const usuariosRes = await HechoenOaxacaIcpBackend.listarUsuarios();
       setUsuarios(usuariosRes);
       setLoading(false);
     } catch (err) {
@@ -39,7 +39,7 @@ const Administrador = ({ principalId }) => {
 
     try {
       setLoading(true);
-      const result = await HechoenOaxaca_icp_backend.asignarAdministrador(
+      const result = await HechoenOaxacaIcpBackend.asignarAdministrador(
         newAdminPrincipal
       );
       if (result.ok) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HechoenOaxaca_icp_backend } from "../../../declarations/HechoenOaxaca-icp-backend";
+import { HechoenOaxacaIcpBackend } from "../../../declarations/HechoenOaxaca-icp-backend";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 import { FaBell, FaRegMoneyBillAlt, FaShoppingCart, FaUser } from "react-icons/fa";
@@ -30,8 +30,8 @@ const ClienteDashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const productosRes = await HechoenOaxaca_icp_backend.readProductos();
-        const perfilRes = await HechoenOaxaca_icp_backend.obtenerPerfil(principal);
+        const productosRes = await HechoenOaxacaIcpBackend.readProductos();
+        const perfilRes = await HechoenOaxacaIcpBackend.obtenerPerfil(principal);
 
         setProductos(productosRes);
         setPerfil(perfilRes);
@@ -67,7 +67,7 @@ const ClienteDashboard = () => {
 
   const handleSaveChanges = async () => {
     try {
-      const result = await HechoenOaxaca_icp_backend.actualizarPerfil(
+      const result = await HechoenOaxacaIcpBackend.actualizarPerfil(
         principal,
         editFormData.nombreCompleto,
         editFormData.lugarOrigen,

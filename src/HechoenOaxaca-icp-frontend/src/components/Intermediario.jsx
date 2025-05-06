@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { HechoenOaxaca_icp_backend } from "../../../declarations/HechoenOaxaca-icp-backend";
+import { HechoenOaxacaIcpBackend } from "../../../declarations/HechoenOaxaca-icp-backend";
 import Table from "react-bootstrap/Table";
 import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
@@ -17,7 +17,7 @@ const Intermediario = ({ principalId }) => {
   const fetchPedidos = async () => {
     try {
       setLoading(true);
-      const pedidosRes = await HechoenOaxaca_icp_backend.listarPedidosIntermediario(principalId);
+      const pedidosRes = await HechoenOaxacaIcpBackend.listarPedidosIntermediario(principalId);
       setPedidos(pedidosRes);
       setLoading(false);
     } catch (err) {
@@ -46,7 +46,7 @@ const Intermediario = ({ principalId }) => {
   const marcarComoEntregado = async (idPedido) => {
     try {
       setLoading(true);
-      const result = await HechoenOaxaca_icp_backend.marcarPedidoEntregado(idPedido);
+      const result = await HechoenOaxacaIcpBackend.marcarPedidoEntregado(idPedido);
       if (result.ok) {
         setPedidos((prevPedidos) => prevPedidos.filter((pedido) => pedido.id !== idPedido));
       } else {

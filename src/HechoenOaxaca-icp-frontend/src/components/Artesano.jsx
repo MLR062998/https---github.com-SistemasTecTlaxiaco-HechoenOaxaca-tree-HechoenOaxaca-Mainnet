@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
-import { HechoenOaxaca_icp_backend } from "../../../declarations/HechoenOaxaca-icp-backend";
+import { HechoenOaxacaIcpBackend } from "../../../declarations/HechoenOaxaca-icp-backend";
 import CrearProducto from "./CrearProducto";
 import Products from "./Products";
 import Wallet from "./Wallet";
@@ -26,7 +26,7 @@ const Artesano = () => {
     const fetchPerfil = async () => {
       if (!principal) return;
       try {
-        const perfilRes = await HechoenOaxaca_icp_backend.obtenerPerfil(principal);
+        const perfilRes = await HechoenOaxacaIcpBackend.obtenerPerfil(principal);
         setPerfil(perfilRes);
         setEditFormData({
           nombreCompleto: perfilRes.nombreCompleto,
@@ -48,7 +48,7 @@ const Artesano = () => {
 
   const handleSaveChanges = async () => {
     try {
-      const result = await HechoenOaxaca_icp_backend.actualizarPerfil(
+      const result = await HechoenOaxacaIcpBackend.actualizarPerfil(
         principal,
         editFormData.nombreCompleto,
         editFormData.lugarOrigen,

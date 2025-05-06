@@ -7,7 +7,7 @@
     "npm": ">=7.0.0"
   },
   "scripts": {
-    "prebuild": "node scripts/patch-rollup-ast.cjs && dfx generate && ./fix-did-imports.sh",
+    "prebuild": "node scripts/patch-rollup-ast.cjs && dfx generate && ./fix-broken-dts.sh && ./fix-did-imports.sh",
     "pretest": "npm run prebuild --workspaces --if-present",
     "start": "npm start --workspaces --if-present",
     "test": "npm test --workspaces --if-present",

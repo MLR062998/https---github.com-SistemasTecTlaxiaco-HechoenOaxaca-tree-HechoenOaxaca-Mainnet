@@ -1,0 +1,9 @@
+[
+  {
+    "match": "**/*",
+    "headers": {
+      "Content-Security-Policy": "default-src 'self' https:; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' blob: https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; connect-src 'self' https: ic0.app identity.ic0.app; frame-src 'self' https: identity.ic0.app; font-src 'self' https:; media-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self'"
+    },
+    "security_policy": "standard"
+  }
+]

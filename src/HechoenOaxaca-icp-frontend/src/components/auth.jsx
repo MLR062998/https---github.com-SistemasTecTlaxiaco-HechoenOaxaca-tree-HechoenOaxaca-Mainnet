@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useConnect } from "@connect2ic/react";
 import { Principal } from "@dfinity/principal";
 import { useNavigate } from "react-router-dom";
-import { HechoenOaxaca_icp_backend } from "declarations/HechoenOaxaca-icp-backend";
+import { HechoenOaxacaIcpBackend } from "declarations/HechoenOaxaca-icp-backend";
 
 export function useAuthFlow() {
   const { isConnected, principal, activeProvider } = useConnect();
@@ -17,14 +17,14 @@ export function useAuthFlow() {
       console.log("🔍 Verificando usuario:", p.toText());
 
       try {
-        const usuarioExiste = await HechoenOaxaca_icp_backend.verificarUsuario(p);
+        const usuarioExiste = await HechoenOaxacaIcpBackend.verificarUsuario(p);
 
         if (!usuarioExiste) {
           console.log("📝 Registrando nuevo usuario...");
-          await HechoenOaxaca_icp_backend.registrarUsuario();
+          await HechoenOaxacaIcpBackend.registrarUsuario();
         }
 
-        const rol = await HechoenOaxaca_icp_backend.getRolUsuario(p);
+        const rol = await HechoenOaxacaIcpBackend.getRolUsuario(p);
         console.log("🔑 Rol del usuario:", rol);
 
         if (rol && typeof rol === "string" && rol !== "NoAsignado") {
