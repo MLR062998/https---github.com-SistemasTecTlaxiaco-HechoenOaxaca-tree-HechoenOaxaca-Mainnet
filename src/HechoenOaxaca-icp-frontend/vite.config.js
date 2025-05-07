@@ -3,8 +3,18 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
-dotenv.config({ path: '../../.env.production' });
+// Cargar .env principal
+dotenv.config({ path: '../../.env' });
+
+// Cargar todas las env vars necesarias explícitamente
+const defineEnv = {};
+for (const k in process.env) {
+  if (k.startsWith("CANISTER_ID_") || k.endsWith("_CANISTER_ID") || k === "DFX_NETWORK") {
+    defineEnv[`process.env.${k}`] = JSON.stringify(process.env[k]);
+  }
+}
 
 export default defineConfig({
   root: path.resolve(__dirname, 'src'),
@@ -14,7 +24,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
-      declarations: path.resolve(__dirname, '../declarations'), // ✅ necesario para actor backend
+      declarations: path.resolve(__dirname, '../declarations'),
     },
   },
   build: {
@@ -30,4 +40,5 @@ export default defineConfig({
       },
     },
   },
+  define: defineEnv,
 });
