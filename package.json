@@ -7,14 +7,17 @@
     "npm": ">=7.0.0"
   },
   "scripts": {
-    "prebuild": "node scripts/patch-rollup-ast.cjs && dfx generate && ./fix-broken-dts.sh && ./fix-did-imports.sh",
+    "prebuild": "node scripts/patch-rollup-ast.cjs && dfx generate && ./fix-broken-dts.sh && ./fix-did-imports.sh && ./fix-did-envs.sh",
     "pretest": "npm run prebuild --workspaces --if-present",
     "start": "npm start --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
     "dev": "npm run dev --workspace=src/HechoenOaxaca-icp-frontend",
-    "build": "npm run build --workspace=src/HechoenOaxaca-icp-frontend",
+    "build": "npm run prebuild && npm run build:frontend && npm run postbuild",
+    "build:frontend": "npm run build --workspace=src/HechoenOaxaca-icp-frontend",
+    "postbuild": "./postbuild-patch.sh",
     "postinstall": "node scripts/patch-rollup-ast.cjs"
-  },
+  }
+  ,
   "workspaces": [
     "src/HechoenOaxaca-icp-frontend"
   ],
@@ -34,7 +37,9 @@
     "@types/react": "^18.2.14",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
+    "process": "^0.11.10",
     "rollup": "^2.79.1",
-    "vite": "^4.4.9"
+    "vite": "^4.4.9",
+    "vite-plugin-node-polyfills": "^0.23.0"
   }
 }

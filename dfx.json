@@ -13,12 +13,6 @@
       "dependencies": ["HechoenOaxaca-icp-backend"],
       "source": ["src/HechoenOaxaca-icp-frontend/dist"],
       "build": "npm run build"
-    },
-    "internet_identity": {
-      "type": "custom",
-      "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
-      "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz",
-      "frontend": {}
     }
   },
   "defaults": {
