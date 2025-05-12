@@ -19,17 +19,14 @@ import ClienteDashboard from "./components/Cliente";
 import IntermediarioDashboard from "./components/Intermediario";
 import NotificacionesCliente from "./components/NotificacionesCliente";
 import CarritoDeCliente from "./components/CarritoDeCliente";
+import { AuthProvider } from "./components/authContext"; // Asegúrate de que esté aquí
 
-// Configuración del cliente para producción
+// Configuración del cliente
 const client = createClient({
   canisters: {
     "HechoenOaxaca-icp-backend": Productos_backend,
   },
-  providers: [
-    new InternetIdentity({
-      providerUrl: "https://identity.ic0.app",
-    }),
-  ],
+  providers: [new InternetIdentity({ providerUrl: "https://identity.ic0.app" })],
   globalProviderConfig: {
     dev: false,
     host: "https://icp0.io",
@@ -37,7 +34,7 @@ const client = createClient({
 });
 
 function AppContent() {
-  const { isInitializing, isConnected } = useConnect();
+  const { isInitializing } = useConnect();
 
   if (isInitializing) {
     return <LoadingScreen message="Conectando con Internet Computer..." />;
@@ -58,7 +55,6 @@ function AppContent() {
         <Route path="/intermediario-dashboard" element={<IntermediarioDashboard />} />
         <Route path="/notificaciones-cliente" element={<NotificacionesCliente />} />
         <Route path="/carrito" element={<CarritoDeCliente />} />
-        {/* Ruta de fallback para manejar 404 */}
         <Route path="*" element={<div className="container py-5 text-center"><h2>Página no encontrada</h2></div>} />
       </Routes>
     </>
@@ -68,10 +64,12 @@ function AppContent() {
 function App() {
   return (
     <Connect2ICProvider client={client}>
-      <Router basename="/">
-        <Suspense fallback={<LoadingScreen message="Cargando aplicación..." />}>
-          <AppContent />
-        </Suspense>
+      <Router>
+        <AuthProvider>
+          <Suspense fallback={<LoadingScreen message="Cargando aplicación..." />}>
+            <AppContent />
+          </Suspense>
+        </AuthProvider>
       </Router>
     </Connect2ICProvider>
   );

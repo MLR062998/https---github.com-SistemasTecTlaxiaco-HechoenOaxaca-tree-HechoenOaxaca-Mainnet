@@ -7,16 +7,19 @@
     "npm": ">=7.0.0"
   },
   "scripts": {
-    "prebuild": "node scripts/patch-rollup-ast.cjs && dfx generate && ./fix-broken-dts.sh && ./fix-did-imports.sh && ./fix-did-envs.sh",
+    "validate": "./validate-declarations.sh",
+    "deploy:ic": "npm run validate && dfx deploy --network ic",
+    "prebuild": "node scripts/patch-rollup-ast.cjs && dfx generate && ./fix-broken-dts.sh && ./fix-did-imports.sh && ./fix-did-envs.sh && ./sanitize-declarations.sh",
     "pretest": "npm run prebuild --workspaces --if-present",
     "start": "npm start --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
     "dev": "npm run dev --workspace=src/HechoenOaxaca-icp-frontend",
     "build": "npm run prebuild && npm run build:frontend && npm run postbuild",
     "build:frontend": "npm run build --workspace=src/HechoenOaxaca-icp-frontend",
-    "postbuild": "./postbuild-patch.sh",
+    "postbuild": "./postbuild-patch.sh && ./sanitize-dist.sh",
     "postinstall": "node scripts/patch-rollup-ast.cjs"
   }
+  
   ,
   "workspaces": [
     "src/HechoenOaxaca-icp-frontend"

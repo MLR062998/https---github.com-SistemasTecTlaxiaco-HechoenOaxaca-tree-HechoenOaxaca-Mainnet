@@ -1,9 +1,9 @@
+// src/HechoenOaxaca-icp-frontend/components/Wallet.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthClient } from "@dfinity/auth-client";
 import { Actor } from "@dfinity/agent";
-import { createActor } from "../../../declarations/HechoenOaxaca-icp-backend";
-const HechoenOaxacaIcpBackend = createActor(import.meta.env.VITE_BACKEND_CANISTER_ID);
+import { HechoenOaxacaIcpBackend } from "../../../declarations/HechoenOaxaca-icp-backend";
 import { Button, Card, Form, Alert, Container, Row, Col } from "react-bootstrap";
 
 const Wallet = () => {
@@ -24,7 +24,6 @@ const Wallet = () => {
         setPrincipalId(identity.getPrincipal().toText());
         Actor.agentOf(HechoenOaxacaIcpBackend).replaceIdentity(identity);
 
-        // Obtener el saldo real
         const realBalance = await HechoenOaxacaIcpBackend.obtenerSaldo();
         setBalance(realBalance);
       }
@@ -115,7 +114,6 @@ const Wallet = () => {
                 <strong>Saldo:</strong> {balance} ICP
               </p>
 
-              {/* Sección de Recarga */}
               <Card className="mb-4">
                 <Card.Header>Recargar Saldo</Card.Header>
                 <Card.Body>
@@ -136,7 +134,6 @@ const Wallet = () => {
                 </Card.Body>
               </Card>
 
-              {/* Sección de Transferencia */}
               <Card>
                 <Card.Header>Transferir Saldo</Card.Header>
                 <Card.Body>
