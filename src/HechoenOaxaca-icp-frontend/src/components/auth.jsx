@@ -1,43 +1,38 @@
-// src/auth.ts
 import { useEffect } from "react";
-import { useConnect } from "@connect2ic/react";
-import { Principal } from "@dfinity/principal";
+import { useConnect } from "@connect2ic/react"; // Hook para manejar conexión/autenticación
+import { Principal } from "@dfinity/principal"; // Utilidad para manejar IDs de usuarios en ICP
 import { useNavigate } from "react-router-dom";
-import { HechoenOaxacaIcpBackend } from "declarations/HechoenOaxaca-icp-backend";
+import { createActor, canisterId } from "declarations/HechoenOaxaca-icp-backend";
 
 export function useAuthFlow() {
-  const { isConnected, principal, activeProvider } = useConnect();
+  const { isConnected, principal } = useConnect(); // Detecta si el usuario está conectado y su principal ID
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleAuth = async () => {
-      if (!isConnected || !principal) return;
-
-      const p = Principal.fromText(principal);
-      console.log("🔍 Verificando usuario:", p.toText());
+      if (!isConnected || !principal) return; // Si no está conectado, no continúa
 
       try {
-        const usuarioExiste = await HechoenOaxacaIcpBackend.verificarUsuario(p);
+        const actor = createActor(canisterId); // Crea una conexión con el canister backend
+        const p = Principal.fromText(principal); // Convierte el principal en objeto ICP
 
+        const usuarioExiste = await actor.verificarUsuario(p); // Verifica si el usuario ya está registrado
         if (!usuarioExiste) {
-          console.log("📝 Registrando nuevo usuario...");
-          await HechoenOaxacaIcpBackend.registrarUsuario();
+          await actor.registrarUsuario(); // Si no existe, lo registra en el backend
         }
 
-        const rol = await HechoenOaxacaIcpBackend.getRolUsuario(p);
-        console.log("🔑 Rol del usuario:", rol);
-
+        const rol = await actor.getRolUsuario(p); // Obtiene el rol del usuario desde el backend
         if (rol && typeof rol === "string" && rol !== "NoAsignado") {
-          navigate(`/${rol.toLowerCase()}-dashboard`);
+          navigate(`/${rol.toLowerCase()}-dashboard`); // Redirige al dashboard según el rol
         } else {
-          navigate("/registro");
+          navigate("/registro"); // Si no tiene rol asignado, redirige a registro
         }
       } catch (error) {
-        console.error("❌ Error autenticando/obteniendo rol:", error);
-        alert("⚠️ No se pudo autenticar. Revisa consola.");
+        console.error("❌ Error autenticando usuario:", error);
+        alert("⚠️ No se pudo autenticar. Verifica consola.");
       }
     };
 
     handleAuth();
-  }, [isConnected, principal, navigate]);
+  }, [isConnected, principal, navigate]); // Se ejecuta cada vez que cambia la conexión o el principal
 }

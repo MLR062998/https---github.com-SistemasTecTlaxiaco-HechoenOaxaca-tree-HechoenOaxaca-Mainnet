@@ -1,8 +1,9 @@
+// src/App.jsx
 import React, { Suspense } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { Connect2ICProvider, useConnect } from "@connect2ic/react";
 import { createClient } from "@connect2ic/core";
-import { InternetIdentity } from "@connect2ic/core/providers/internet-identity";
+import { NFID } from "@connect2ic/core/providers/nfid"; // ✅ NFID provider correcto
 import * as Productos_backend from "declarations/HechoenOaxaca-icp-backend";
 
 // Componentes
@@ -19,14 +20,18 @@ import ClienteDashboard from "./components/Cliente";
 import IntermediarioDashboard from "./components/Intermediario";
 import NotificacionesCliente from "./components/NotificacionesCliente";
 import CarritoDeCliente from "./components/CarritoDeCliente";
-import { AuthProvider } from "./components/authContext"; // Asegúrate de que esté aquí
+import { AuthProvider } from "./components/authContext"; // ✅ Integración AuthContext
 
-// Configuración del cliente
+// 🔐 Configurar Connect2IC con NFID
 const client = createClient({
   canisters: {
     "HechoenOaxaca-icp-backend": Productos_backend,
   },
-  providers: [new InternetIdentity({ providerUrl: "https://identity.ic0.app" })],
+  providers: [
+    new NFID({
+      providerUrl: "https://nfid.one", // ✅ URL correcta de NFID
+    }),
+  ],
   globalProviderConfig: {
     dev: false,
     host: "https://icp0.io",

@@ -1,13 +1,16 @@
+// ✅ Menu.jsx actualizado con connect2ic
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
-import { useAuthContext } from "./authContext";
+import { useConnect } from "@connect2ic/react";
 import "../index.scss";
 
 const Menu = () => {
-  const { isAuthenticated, userRole, handleLogout, handleLogin } = useAuthContext();
+  const { isConnected, principal, disconnect, connect } = useConnect();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const rol = localStorage.getItem("rol");
 
   return (
     <div>
@@ -17,18 +20,19 @@ const Menu = () => {
             Hecho en Oaxaca
           </Link>
           <div className="custom-links-container">
-            {!isAuthenticated ? (
-              <button className="custom-button login-button" onClick={handleLogin}>
+            {!isConnected ? (
+              <button className="custom-button login-button" onClick={connect}>
                 Iniciar Sesión
               </button>
             ) : (
               <>
-                {userRole === "cliente" && <Link to="/cliente-dashboard">Dashboard Cliente</Link>}
-                {userRole === "artesano" && <Link to="/artesano-dashboard">Dashboard Artesano</Link>}
-                {userRole === "intermediario" && (
-                  <Link to="/intermediario-dashboard">Dashboard Intermediario</Link>
-                )}
-                <button className="custom-button logout-button" onClick={() => setShowLogoutModal(true)}>
+                {rol === "cliente" && <Link to="/cliente-dashboard">Dashboard Cliente</Link>}
+                {rol === "artesano" && <Link to="/artesano-dashboard">Dashboard Artesano</Link>}
+                {rol === "intermediario" && <Link to="/intermediario-dashboard">Dashboard Intermediario</Link>}
+                <button
+                  className="custom-button logout-button"
+                  onClick={() => setShowLogoutModal(true)}
+                >
                   Salir
                 </button>
               </>
@@ -50,7 +54,8 @@ const Menu = () => {
             variant="danger"
             onClick={() => {
               setShowLogoutModal(false);
-              handleLogout();
+              disconnect();
+              localStorage.clear();
             }}
           >
             Salir

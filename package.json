@@ -18,9 +18,7 @@
     "build:frontend": "npm run build --workspace=src/HechoenOaxaca-icp-frontend",
     "postbuild": "./postbuild-patch.sh && ./sanitize-dist.sh",
     "postinstall": "node scripts/patch-rollup-ast.cjs"
-  }
-  
-  ,
+  },
   "workspaces": [
     "src/HechoenOaxaca-icp-frontend"
   ],
@@ -31,6 +29,7 @@
     "@dfinity/auth-client": "^2.4.1",
     "@dfinity/candid": "^2.4.1",
     "@dfinity/identity": "^2.4.1",
+    "@dfinity/principal": "^2.4.1",
     "react": "18.2.0",
     "react-dom": "18.2.0"
   },
