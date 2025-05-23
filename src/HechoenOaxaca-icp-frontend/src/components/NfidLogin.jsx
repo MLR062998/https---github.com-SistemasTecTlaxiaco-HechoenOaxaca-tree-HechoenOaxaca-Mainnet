@@ -1,27 +1,19 @@
-// src/components/NfidLogin.jsx
-import { useConnect } from "@connect2ic/react";
-import React, { useEffect } from "react";
+import React from "react";
+import { useAuthContext } from "./authContext";
 
 function NfidLogin() {
-  const { isConnected, isConnecting, principal, connect, error } = useConnect();
-
-  useEffect(() => {
-    if (isConnected && principal) {
-      console.log("✅ Usuario conectado:", principal);
-      localStorage.setItem("principalId", principal);
-    }
-  }, [isConnected, principal]);
+  const { connect, disconnect, isAuthenticated, principalId, isLoading } = useAuthContext();
 
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
       <button
-        onClick={connect}
+        onClick={isAuthenticated ? disconnect : connect}
         style={{ padding: "10px 20px", fontSize: "16px" }}
-        disabled={isConnecting}
+        disabled={isLoading}
       >
-        {isConnecting ? "Conectando..." : "🚀 Iniciar sesión con NFID"}
+        {isLoading ? "Cargando..." : isAuthenticated ? "Cerrar sesión" : "🚀 Iniciar sesión con NFID"}
       </button>
-      {error && <p style={{ color: "red", marginTop: "10px" }}>❌ {error.message}</p>}
+      {principalId && <p style={{ marginTop: "10px" }}>🆔 {principalId}</p>}
     </div>
   );
 }

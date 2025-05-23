@@ -1,14 +1,16 @@
 {
   "compilerOptions": {
-    "strict": true,
     "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "allowJs": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": "HACK_BECAUSE_OF_ALLOW_JS",
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
-    "module": "Node16",
-    "moduleResolution": "node16",
-    "allowJs": true,
-    "outDir": "HACK_BECAUSE_OF_ALLOW_JS",
     "allowSyntheticDefaultImports": true,
     "types": ["node"]
-  }
+  },
+  "include": ["src", "scripts"]
 }

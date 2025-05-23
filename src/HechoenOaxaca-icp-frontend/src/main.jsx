@@ -1,22 +1,44 @@
+// src/main.jsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./index.scss";
 
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import './index.scss';
-
-// Opcional: Polyfills para compatibilidad con Internet Computer
-import { Buffer } from 'buffer';
+import { Buffer } from "buffer";
 window.Buffer = Buffer;
 
-// Configuración inicial para el entorno de desarrollo
-if (import.meta.env.DEV) {
-  console.log('Running in development mode');
-}
+import { createClient } from "@connect2ic/core";
+import { Connect2ICProvider } from "@connect2ic/react";
+import { NFID } from "@connect2ic/core/providers/nfid";
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+// ✅ Usa ruta relativa correcta al backend generado
+import * as HechoenOaxaca from "../../declarations/HechoenOaxaca-icp-backend";
+
+// ✅ Contexto de autenticación
+import { AuthProvider } from "./components/authContext";
+
+const client = createClient({
+  canisters: {
+    HechoenOaxaca,
+  },
+  providers: [
+    new NFID({
+      appName: "Hecho en Oaxaca",
+    }),
+  ],
+  globalProviderConfig: {
+    host: import.meta.env.DEV ? "http://127.0.0.1:4943" : "https://icp0.io",
+  },
+});
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
 
 root.render(
   <React.StrictMode>
-    <App />
+    <Connect2ICProvider client={client}>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </Connect2ICProvider>
   </React.StrictMode>
 );

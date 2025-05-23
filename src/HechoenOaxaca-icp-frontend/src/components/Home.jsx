@@ -1,16 +1,16 @@
 // src/components/Home.jsx
-import { useCanister } from "@connect2ic/react";
 import React, { useEffect, useState } from "react";
+import { useCanister } from "@connect2ic/react";
 import { useNavigate } from "react-router-dom";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
+import Compra from "./Compra";
+import "../index.scss";
 import "bootstrap/dist/css/bootstrap.min.css";
-import Compra from './Compra';
-import '../index.scss';
 
 const Home = () => {
-  const [marketplaceBackend] = useCanister('HechoenOaxaca-icp-backend');
+  const [backend] = useCanister("HechoenOaxaca");
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -18,25 +18,23 @@ const Home = () => {
   const navigate = useNavigate();
 
   const fetchProducts = async () => {
-    if (!marketplaceBackend) {
-      console.warn('Marketplace backend no está disponible aún.');
-      return;
-    }
+    if (!backend || typeof backend.readProductos !== "function") return;
 
     setLoading(true);
     try {
-      const productsRes = await marketplaceBackend.readProductos();
+      const result = await backend.readProductos();
+      if (!Array.isArray(result)) throw new Error("readProductos no devolvió una lista");
 
-      const processedProducts = productsRes.map(product => ({
-        ...product,
-        imagenes: product.imagenes.map(imagen =>
-          URL.createObjectURL(new Blob([new Uint8Array(imagen)], { type: "image/jpeg" }))
-        )
+      const productosProcesados = result.map((producto) => ({
+        ...producto,
+        imagenes: producto.imagenes.map(
+          (img) => URL.createObjectURL(new Blob([new Uint8Array(img)], { type: "image/jpeg" }))
+        ),
       }));
 
-      setProducts(processedProducts);
-    } catch (error) {
-      console.error('Error al cargar productos:', error);
+      setProducts(productosProcesados);
+    } catch (err) {
+      console.error("❌ Error al cargar productos:", err);
     } finally {
       setLoading(false);
     }
@@ -44,7 +42,7 @@ const Home = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [backend]);
 
   const handleShowDetails = (product) => {
     setSelectedProduct(product);
@@ -53,7 +51,7 @@ const Home = () => {
 
   const handlePurchase = (product) => {
     setShowModal(false);
-    navigate('/compra', { state: { product } });
+    navigate("/compra", { state: { product } });
   };
 
   return (
@@ -66,9 +64,7 @@ const Home = () => {
       <div className="container mt-4">
         {loading ? (
           <div className="d-flex justify-content-center align-items-center" style={{ height: "200px" }}>
-            <Spinner animation="border" role="status" variant="primary">
-              <span className="visually-hidden">Cargando...</span>
-            </Spinner>
+            <Spinner animation="border" variant="primary" />
           </div>
         ) : (
           <div className="row">

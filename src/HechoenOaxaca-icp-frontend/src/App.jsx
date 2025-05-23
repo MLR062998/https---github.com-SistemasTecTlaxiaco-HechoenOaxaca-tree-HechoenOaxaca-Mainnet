@@ -1,14 +1,10 @@
-// src/App.jsx
 import React, { Suspense } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import { Connect2ICProvider, useConnect } from "@connect2ic/react";
-import { createClient } from "@connect2ic/core";
-import { NFID } from "@connect2ic/core/providers/nfid"; // ✅ NFID provider correcto
-import * as Productos_backend from "declarations/HechoenOaxaca-icp-backend";
 
-// Componentes
 import LoadingScreen from "./components/LoadingScreen";
 import Menu from "./components/Menu";
+import { AuthProvider } from "./components/authContext";
+
 import CrearProducto from "./components/CrearProducto";
 import Products from "./components/Products";
 import Home from "./components/Home";
@@ -20,31 +16,8 @@ import ClienteDashboard from "./components/Cliente";
 import IntermediarioDashboard from "./components/Intermediario";
 import NotificacionesCliente from "./components/NotificacionesCliente";
 import CarritoDeCliente from "./components/CarritoDeCliente";
-import { AuthProvider } from "./components/authContext"; // ✅ Integración AuthContext
-
-// 🔐 Configurar Connect2IC con NFID
-const client = createClient({
-  canisters: {
-    "HechoenOaxaca-icp-backend": Productos_backend,
-  },
-  providers: [
-    new NFID({
-      providerUrl: "https://nfid.one", // ✅ URL correcta de NFID
-    }),
-  ],
-  globalProviderConfig: {
-    dev: false,
-    host: "https://icp0.io",
-  },
-});
 
 function AppContent() {
-  const { isInitializing } = useConnect();
-
-  if (isInitializing) {
-    return <LoadingScreen message="Conectando con Internet Computer..." />;
-  }
-
   return (
     <>
       <Menu />
@@ -60,24 +33,24 @@ function AppContent() {
         <Route path="/intermediario-dashboard" element={<IntermediarioDashboard />} />
         <Route path="/notificaciones-cliente" element={<NotificacionesCliente />} />
         <Route path="/carrito" element={<CarritoDeCliente />} />
-        <Route path="*" element={<div className="container py-5 text-center"><h2>Página no encontrada</h2></div>} />
+        <Route path="*" element={
+          <div className="container py-5 text-center">
+            <h2>Página no encontrada</h2>
+          </div>
+        } />
       </Routes>
     </>
   );
 }
 
-function App() {
+export default function App() {
   return (
-    <Connect2ICProvider client={client}>
-      <Router>
-        <AuthProvider>
-          <Suspense fallback={<LoadingScreen message="Cargando aplicación..." />}>
-            <AppContent />
-          </Suspense>
-        </AuthProvider>
-      </Router>
-    </Connect2ICProvider>
+    <Router>
+      <AuthProvider>
+        <Suspense fallback={<LoadingScreen message="Cargando aplicación..." />}>
+          <AppContent />
+        </Suspense>
+      </AuthProvider>
+    </Router>
   );
 }
-
-export default App;
