@@ -1,14 +1,13 @@
+// src/components/Registro.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Actor, HttpAgent } from "@dfinity/agent";
-import { idlFactory, canisterId } from "../../../declarations/HechoenOaxaca-icp-backend";
 import { useAuthContext } from "./authContext";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import Container from "react-bootstrap/Container";
 import Card from "react-bootstrap/Card";
 
-const Registro = ({ onRegister }) => {
+const Registro = () => {
   const [formData, setFormData] = useState({
     nombreCompleto: "",
     lugarOrigen: "",
@@ -19,12 +18,10 @@ const Registro = ({ onRegister }) => {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { isAuthenticated, identity, principalId } = useAuthContext();
+  const { isAuthenticated, actor, principalId } = useAuthContext();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
+    if (!isAuthenticated) navigate("/");
   }, [isAuthenticated, navigate]);
 
   const handleChange = (e) => {
@@ -38,14 +35,9 @@ const Registro = ({ onRegister }) => {
     setError(null);
 
     try {
-      if (!principalId) throw new Error("No se encontró el principalId.");
+      if (!principalId || !actor) throw new Error("Actor o principalId no disponibles");
 
-      const agent = new HttpAgent({ identity });
-      if (process.env.NODE_ENV === "development") await agent.fetchRootKey();
-
-      const backendActor = Actor.createActor(idlFactory, { agent, canisterId });
-
-      const result = await backendActor.registrarUsuario(
+      const result = await actor.registrarUsuario(
         formData.nombreCompleto,
         formData.lugarOrigen,
         formData.telefono,
@@ -53,13 +45,13 @@ const Registro = ({ onRegister }) => {
       );
 
       if ("ok" in result) {
-        localStorage.setItem("userRole", formData.rol);
+        localStorage.setItem("rol", formData.rol);
         navigate(`/${formData.rol.toLowerCase()}-dashboard`);
       } else {
-        setError("Error inesperado al registrar el usuario.");
+        setError("⚠️ Error al registrar el usuario");
       }
     } catch (err) {
-      setError(`Error: ${err.message}`);
+      setError(`❌ ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }

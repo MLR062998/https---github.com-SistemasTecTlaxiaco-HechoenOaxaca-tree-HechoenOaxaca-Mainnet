@@ -1,32 +1,55 @@
-import React, { useEffect, useState } from "react";
+// src/components/CarritoDeCliente.jsx
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 import { FaTrash } from "react-icons/fa";
+import { createActor, canisterId } from "declarations/HechoenOaxaca-icp-backend";
+import { useAuthContext } from "./authContext";
 import "../cliente.scss";
 
 const CarritoDeCliente = ({ carrito, setCarrito }) => {
   const navigate = useNavigate();
+  const { identity, isAuthenticated } = useAuthContext();
+  const [error, setError] = useState("");
 
-  // Función para eliminar un producto del carrito
   const eliminarProducto = (id) => {
     const nuevoCarrito = carrito.filter((producto) => producto.id !== id);
     setCarrito(nuevoCarrito);
   };
 
-  // Función para calcular el total del carrito
   const calcularTotal = () => {
-    return carrito.reduce((total, producto) => total + producto.precio, 0).toFixed(2);
+    return carrito.reduce((total, producto) => total + producto.precio, 0);
   };
 
-  // Función para proceder al checkout
-  const procederAlCheckout = () => {
-    navigate("/checkout", { state: { carrito, total: calcularTotal() } });
+  const procederAlCheckout = async () => {
+    if (!isAuthenticated || !identity) {
+      setError("Debes iniciar sesión para proceder con el pago.");
+      return;
+    }
+
+    try {
+      const actor = createActor({ identity, canisterId });
+      const total = Math.floor(calcularTotal()); // ICP entero
+      const resultado = await actor.depositarFondos(BigInt(total));
+
+      if ("ok" in resultado) {
+        setCarrito([]);
+        navigate("/checkout-confirmado", { state: { total } });
+      } else {
+        setError("No se pudo procesar el pago.");
+      }
+    } catch (err) {
+      console.error("❌ Error al procesar el pago:", err);
+      setError("Hubo un error al procesar el pago.");
+    }
   };
 
   return (
     <div className="carrito-de-cliente">
       <h2 className="text-center">Mi Carrito</h2>
+
+      {error && <p className="text-danger text-center">{error}</p>}
 
       {carrito.length === 0 ? (
         <p className="text-center">Tu carrito está vacío.</p>
@@ -38,7 +61,7 @@ const CarritoDeCliente = ({ carrito, setCarrito }) => {
                 <div>
                   <Card.Title>{producto.nombre}</Card.Title>
                   <Card.Text>
-                    <strong>Precio:</strong> ${producto.precio.toFixed(2)}
+                    <strong>Precio:</strong> {producto.precio.toFixed(2)} ICP
                   </Card.Text>
                 </div>
                 <Button variant="danger" onClick={() => eliminarProducto(producto.id)}>
@@ -48,7 +71,7 @@ const CarritoDeCliente = ({ carrito, setCarrito }) => {
             </Card>
           ))}
           <div className="total text-center">
-            <h4>Total: ${calcularTotal()}</h4>
+            <h4>Total: {calcularTotal().toFixed(2)} ICP</h4>
             <Button variant="success" onClick={procederAlCheckout}>
               Proceder al Checkout
             </Button>

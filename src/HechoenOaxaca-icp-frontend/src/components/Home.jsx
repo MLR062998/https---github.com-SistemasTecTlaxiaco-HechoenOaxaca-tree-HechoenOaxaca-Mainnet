@@ -1,6 +1,6 @@
 // src/components/Home.jsx
 import React, { useEffect, useState } from "react";
-import { useCanister } from "@connect2ic/react";
+import { useAuthContext } from "./authContext";
 import { useNavigate } from "react-router-dom";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -10,7 +10,7 @@ import "../index.scss";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const Home = () => {
-  const [backend] = useCanister("HechoenOaxaca");
+  const { actor } = useAuthContext();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -18,17 +18,17 @@ const Home = () => {
   const navigate = useNavigate();
 
   const fetchProducts = async () => {
-    if (!backend || typeof backend.readProductos !== "function") return;
+    if (!actor?.listarProductos) return;
 
     setLoading(true);
     try {
-      const result = await backend.readProductos();
-      if (!Array.isArray(result)) throw new Error("readProductos no devolvió una lista");
+      const result = await actor.listarProductos();
+      if (!Array.isArray(result)) throw new Error("listarProductos no devolvió una lista");
 
       const productosProcesados = result.map((producto) => ({
         ...producto,
-        imagenes: producto.imagenes.map(
-          (img) => URL.createObjectURL(new Blob([new Uint8Array(img)], { type: "image/jpeg" }))
+        imagenes: producto.imagenes.map((img) =>
+          URL.createObjectURL(new Blob([new Uint8Array(img)], { type: "image/jpeg" }))
         ),
       }));
 
@@ -42,7 +42,7 @@ const Home = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [backend]);
+  }, [actor]);
 
   const handleShowDetails = (product) => {
     setSelectedProduct(product);

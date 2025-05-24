@@ -1,41 +1,33 @@
-import React, { useState, useEffect } from "react";
+// src/components/Menu.jsx
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
-import { useConnect } from "@connect2ic/react";
+import { useAuthContext } from "./authContext";
+import ModalProviderSelect from "./ModalProviderSelect";
 import "../index.scss";
 
 const Menu = () => {
   const {
-    isConnected,
-    isConnecting,
-    principal,
-    connect,
-    disconnect,
-    error,
-  } = useConnect();
+    isAuthenticated,
+    principalId,
+    isLoading,
+    openProviderModal,
+    logout,
+  } = useAuthContext();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const rol = localStorage.getItem("rol");
 
-  const handleLogin = async () => {
-    console.log("🔘 Botón 'Iniciar Sesión' presionado");
+  const handleLogout = async () => {
     try {
-      await connect();
+      await logout();
+      localStorage.clear();
+      setShowLogoutModal(false);
     } catch (err) {
-      console.error("❌ Error al iniciar sesión:", err);
+      console.error("❌ Error al cerrar sesión:", err);
     }
   };
-
-  useEffect(() => {
-    if (isConnected && principal) {
-      const principalStr = typeof principal === "object" && typeof principal.toText === "function"
-        ? principal.toText()
-        : principal;
-      console.log("✅ Usuario conectado:", principalStr);
-      localStorage.setItem("principalId", principalStr);
-    }
-  }, [isConnected, principal]);
 
   return (
     <div>
@@ -43,21 +35,14 @@ const Menu = () => {
         <div className="container-fluid custom-container">
           <Link to="/" className="custom-brand">Hecho en Oaxaca</Link>
           <div className="custom-links-container">
-            {!isConnected ? (
-              <>
-                <button
-                  className="custom-button login-button"
-                  onClick={handleLogin}
-                  disabled={isConnecting}
-                >
-                  {isConnecting ? "Conectando..." : "Iniciar Sesión"}
-                </button>
-                {error && (
-                  <div className="text-danger mt-2" style={{ fontSize: "0.9rem" }}>
-                    ⚠️ {error.message || String(error)}
-                  </div>
-                )}
-              </>
+            {!isAuthenticated ? (
+              <button
+                className="custom-button login-button"
+                onClick={openProviderModal}
+                disabled={isLoading}
+              >
+                {isLoading ? "Conectando..." : "Iniciar Sesión"}
+              </button>
             ) : (
               <>
                 {rol === "cliente" && <Link to="/cliente-dashboard">Dashboard Cliente</Link>}
@@ -82,18 +67,11 @@ const Menu = () => {
         <Modal.Body>¿Está seguro de que quiere salir?</Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowLogoutModal(false)}>Cancelar</Button>
-          <Button
-            variant="danger"
-            onClick={() => {
-              disconnect();
-              localStorage.clear();
-              setShowLogoutModal(false);
-            }}
-          >
-            Salir
-          </Button>
+          <Button variant="danger" onClick={handleLogout}>Salir</Button>
         </Modal.Footer>
       </Modal>
+
+      <ModalProviderSelect />
     </div>
   );
 };
