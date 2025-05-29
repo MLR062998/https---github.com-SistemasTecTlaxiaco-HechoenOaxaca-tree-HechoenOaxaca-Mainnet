@@ -10,9 +10,9 @@ export default defineConfig({
     plugins: [
         react(),
         environment({
-            CANISTER_ID_HECHOENOAXACA_ICP_BACKEND: process.env.CANISTER_ID_HECHOENOAXACA_ICP_BACKEND || '',
-            CANISTER_ID_HECHOENOAXACA_ICP_FRONTEND: process.env.CANISTER_ID_HECHOENOAXACA_ICP_FRONTEND || '',
-            DFX_NETWORK: process.env.DFX_NETWORK || '',
+            CANISTER_ID_HECHOENOAXACA_ICP_BACKEND: import.meta.env.VITE_CANISTER_ID_HECHOENOAXACA_ICP_BACKEND || '',
+            CANISTER_ID_HECHOENOAXACA_ICP_FRONTEND: import.meta.env.VITE_CANISTER_ID_HECHOENOAXACA_ICP_FRONTEND || '',
+            DFX_NETWORK: import.meta.env.VITE_DFX_NETWORK || '',
         }),
     ],
     optimizeDeps: {

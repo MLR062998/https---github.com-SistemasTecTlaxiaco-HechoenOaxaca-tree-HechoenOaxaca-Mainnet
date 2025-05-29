@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "🔧 Reemplazando process.env.CANISTER_ID_* por valores hardcoded en index.js..."
+echo "🔧 Reemplazando import.meta.env.VITE_CANISTER_ID_* por valores hardcoded en index.js..."
 
 # Backend
 BACKEND_FILE="src/declarations/HechoenOaxaca-icp-backend/index.js"

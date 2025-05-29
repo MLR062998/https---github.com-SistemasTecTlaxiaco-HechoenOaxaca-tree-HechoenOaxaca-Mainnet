@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
       setIdentity(id);
       setIsAuthenticated(!id.getPrincipal().isAnonymous());
       const agent = new HttpAgent({ identity: id });
-      if (process.env.DFX_NETWORK !== "ic") await agent.fetchRootKey();
+      if (import.meta.env.VITE_DFX_NETWORK !== "ic") await agent.fetchRootKey();
       const act = Actor.createActor(idlFactory, {
         agent,
         canisterId,
@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }) => {
         setIdentity(id);
         setIsAuthenticated(true);
         const agent = new HttpAgent({ identity: id });
-        if (process.env.DFX_NETWORK !== "ic") await agent.fetchRootKey();
+        if (import.meta.env.VITE_DFX_NETWORK !== "ic") await agent.fetchRootKey();
         const act = Actor.createActor(idlFactory, {
           agent,
           canisterId,

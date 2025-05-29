@@ -1,7 +1,6 @@
 // src/App.jsx
-import React, { Suspense, useEffect } from "react";
-import { BrowserRouter as Router, Route, Routes, useNavigate } from "react-router-dom";
-import { useAuthContext } from "./components/authContext";
+import React, { Suspense } from "react";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 
 import LoadingScreen from "./components/LoadingScreen";
 import Menu from "./components/Menu";
@@ -17,34 +16,13 @@ import ClienteDashboard from "./components/Cliente";
 import IntermediarioDashboard from "./components/Intermediario";
 import NotificacionesCliente from "./components/NotificacionesCliente";
 import CarritoDeCliente from "./components/CarritoDeCliente";
-import CheckoutConfirmado from "./components/CheckoutConfirmado"; // ✅ nuevo
-
-function AuthRedirector() {
-  const { isAuthenticated, principalId, actor } = useAuthContext();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const verificarUsuario = async () => {
-      if (!isAuthenticated || !principalId || !actor) return;
-      try {
-        const nombre = await actor.quienSoy();
-        console.log("🔐 quienSoy():", nombre);
-      } catch (err) {
-        console.error("❌ Error al llamar quienSoy():", err);
-      }
-    };
-
-    verificarUsuario();
-  }, [isAuthenticated, principalId, actor]);
-
-  return null;
-}
+import CheckoutConfirmado from "./components/CheckoutConfirmado";
+import LoginSuccess from "./components/LoginSuccess";
 
 function AppContent() {
   return (
     <>
       <Menu />
-      <AuthRedirector />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/nuevo-producto/*" element={<CrearProducto />} />
@@ -57,7 +35,8 @@ function AppContent() {
         <Route path="/intermediario-dashboard" element={<IntermediarioDashboard />} />
         <Route path="/notificaciones-cliente" element={<NotificacionesCliente />} />
         <Route path="/carrito" element={<CarritoDeCliente />} />
-        <Route path="/checkout-confirmado" element={<CheckoutConfirmado />} /> {/* ✅ nuevo */}
+        <Route path="/checkout-confirmado" element={<CheckoutConfirmado />} />
+        <Route path="/login-success" element={<LoginSuccess />} />
         <Route path="*" element={<div className="container py-5 text-center"><h2>Página no encontrada</h2></div>} />
       </Routes>
     </>

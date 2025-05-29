@@ -35,7 +35,7 @@ const Registro = ({ onRegister }) => {
             if (!principalId)
                 throw new Error("No se encontró el principalId.");
             const agent = new HttpAgent({ identity });
-            if (process.env.NODE_ENV === "development")
+            if (import.meta.env.VITE_NODE_ENV === "development")
                 await agent.fetchRootKey();
             const backendActor = Actor.createActor(idlFactory, { agent, canisterId });
             const result = await backendActor.registrarUsuario(formData.nombreCompleto, formData.lugarOrigen, formData.telefono, formData.rol);

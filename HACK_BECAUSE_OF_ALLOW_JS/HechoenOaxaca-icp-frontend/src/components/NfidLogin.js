@@ -31,7 +31,7 @@ function NfidLogin() {
             // Crear un agente HTTP con la identidad delegada
             const agent = new HttpAgent({ identity: delegationIdentity });
             // Obtener la clave raíz solo en desarrollo (entorno local)
-            if (process.env.DFX_NETWORK === "local") {
+            if (import.meta.env.VITE_DFX_NETWORK === "local") {
                 await agent.fetchRootKey();
             }
             // Crear el actor del backend usando el agente

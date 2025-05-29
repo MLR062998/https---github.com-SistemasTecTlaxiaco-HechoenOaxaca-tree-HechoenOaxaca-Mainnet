@@ -1,3 +1,4 @@
+// src/declarations/HechoenOaxaca-icp-backend/main.mo
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import HashMap "mo:base/HashMap";
@@ -12,9 +13,9 @@ import Array "mo:base/Array";
 import Nat "mo:base/Nat";
 import Time "mo:base/Time";
 import Option "mo:base/Option";
+import Debug "mo:base/Debug";
 
-actor class HechoenOaxacaBackend(initialAdmin : Principal) = this {
-    // ========== TYPE DEFINITIONS ==========
+actor class HechoenOaxacaBackend() = this {
     public type Usuario = {
         nombreCompleto : Text;
         lugarOrigen : Text;
@@ -28,7 +29,6 @@ actor class HechoenOaxacaBackend(initialAdmin : Principal) = this {
         #Artesano;
         #Intermediario;
         #Cliente;
-        #Administrador;
     };
 
     public type Producto = {
@@ -53,7 +53,6 @@ actor class HechoenOaxacaBackend(initialAdmin : Principal) = this {
         #ErrorValidacion : Text;
     };
 
-    // ========== STATE VARIABLES ==========
     private var usuarios = HashMap.HashMap<Principal, Usuario>(0, Principal.equal, Principal.hash);
     private var productos = HashMap.HashMap<Principal, Producto>(0, Principal.equal, Principal.hash);
     private var balances = HashMap.HashMap<Principal, Nat>(0, Principal.equal, Principal.hash);
@@ -62,13 +61,9 @@ actor class HechoenOaxacaBackend(initialAdmin : Principal) = this {
     stable var stableProductos : [(Principal, Producto)] = [];
     stable var stableBalances : [(Principal, Nat)] = [];
 
-    private let admin : Principal = initialAdmin;
-
-    // ========== HELPER FUNCTIONS ==========
     private func toLower(text : Text) : Text {
         Text.fromIter(Iter.map(text.chars(), func(c : Char) : Char {
-            if (c >= 'A' and c <= 'Z') Char.fromNat32(Char.toNat32(c) + 32) 
-            else c
+            if (c >= 'A' and c <= 'Z') Char.fromNat32(Char.toNat32(c) + 32) else c
         }))
     };
 
@@ -85,11 +80,6 @@ actor class HechoenOaxacaBackend(initialAdmin : Principal) = this {
         Principal.fromBlob(random)
     };
 
-    private func isAdmin(caller : Principal) : Bool {
-        Principal.equal(caller, admin)
-    };
-
-    // ========== SYSTEM METHODS ==========
     system func preupgrade() {
         stableUsuarios := Iter.toArray(usuarios.entries());
         stableProductos := Iter.toArray(productos.entries());
@@ -102,24 +92,18 @@ actor class HechoenOaxacaBackend(initialAdmin : Principal) = this {
         balances := HashMap.fromIter<Principal, Nat>(stableBalances.vals(), 0, Principal.equal, Principal.hash);
     };
 
-    // ========== USER MANAGEMENT ==========
     public shared ({ caller }) func registrarUsuario(
         nombreCompleto : Text,
         lugarOrigen : Text,
         telefono : Text,
         rol : Text
     ) : async Result.Result<Usuario, AplicationError> {
-        if (Principal.isAnonymous(caller)) {
-            return #err(#PermisoDenegado);
-        };
-
-        if (nombreCompleto.size() == 0 or lugarOrigen.size() == 0) {
+        if (Principal.isAnonymous(caller)) return #err(#PermisoDenegado);
+        if (Option.isSome(usuarios.get(caller))) return #err(#UsuarioYaExiste);
+        if (nombreCompleto.size() == 0 or lugarOrigen.size() == 0)
             return #err(#ErrorValidacion("Campos requeridos faltantes"));
-        };
-
-        if (not validatePhone(telefono)) {
+        if (not validatePhone(telefono))
             return #err(#ErrorValidacion("Teléfono debe tener 10 dígitos"));
-        };
 
         let usuario : Usuario = {
             nombreCompleto = nombreCompleto;
@@ -129,7 +113,6 @@ actor class HechoenOaxacaBackend(initialAdmin : Principal) = this {
                 case "artesano" #Artesano;
                 case "intermediario" #Intermediario;
                 case "cliente" #Cliente;
-                case "administrador" #Administrador;
                 case _ return #err(#RolNoValido);
             };
             fechaRegistro = Time.now();
@@ -148,7 +131,10 @@ actor class HechoenOaxacaBackend(initialAdmin : Principal) = this {
         }
     };
 
-    // ========== PRODUCT MANAGEMENT ==========
+    public shared query ({ caller }) func obtenerSaldo() : async Nat {
+        Option.get(balances.get(caller), 0)
+    };
+
     public shared ({ caller }) func crearProducto(
         nombre : Text,
         precio : Float,
@@ -158,11 +144,7 @@ actor class HechoenOaxacaBackend(initialAdmin : Principal) = this {
     ) : async Result.Result<Producto, AplicationError> {
         switch (usuarios.get(caller)) {
             case (?usuario) {
-                switch (usuario.rol) {
-                    case (#Artesano) {};
-                    case (#Administrador) {};
-                    case _ return #err(#PermisoDenegado);
-                }
+                if (usuario.rol != #Artesano) return #err(#PermisoDenegado);
             };
             case null return #err(#PermisoDenegado);
         };
@@ -192,32 +174,42 @@ actor class HechoenOaxacaBackend(initialAdmin : Principal) = this {
         Iter.toArray(productos.vals())
     };
 
-    // ========== PAYMENT SYSTEM ==========
-    public shared ({ caller }) func depositarFondos(monto : Nat) : async Result.Result<(), AplicationError> {
+    
+    public shared ({ caller }) func editarPerfil(
+        nombreCompleto : Text,
+        lugarOrigen : Text,
+        telefono : Text
+    ) : async Result.Result<Usuario, AplicationError> {
+        switch (usuarios.get(caller)) {
+            case (?usuario) {
+                if (nombreCompleto.size() == 0 or lugarOrigen.size() == 0) {
+                    return #err(#ErrorValidacion("Campos requeridos faltantes"));
+                };
+                if (not validatePhone(telefono)) {
+                    return #err(#ErrorValidacion("Teléfono debe tener 10 dígitos"));
+                };
+
+                let actualizado : Usuario = {
+                    nombreCompleto = nombreCompleto;
+                    lugarOrigen = lugarOrigen;
+                    telefono = telefono;
+                    rol = usuario.rol;
+                    fechaRegistro = usuario.fechaRegistro;
+                    verificado = usuario.verificado;
+                };
+                usuarios.put(caller, actualizado);
+                #ok(actualizado)
+            };
+            case null return #err(#UsuarioNoExiste);
+        }
+    };
+
+public shared ({ caller }) func depositarFondos(monto : Nat) : async Result.Result<(), AplicationError> {
         if (Principal.isAnonymous(caller)) {
             return #err(#PermisoDenegado);
         };
-
         let saldoActual = Option.get(balances.get(caller), 0);
         balances.put(caller, saldoActual + monto);
-        #ok(())
-    };
-
-    public shared query ({ caller }) func obtenerSaldo() : async Nat {
-        Option.get(balances.get(caller), 0)
-    };
-
-    // ========== ADMIN FUNCTIONS ==========
-    public shared ({ caller }) func agregarSaldo(
-        usuario : Principal,
-        monto : Nat
-    ) : async Result.Result<(), AplicationError> {
-        if (not isAdmin(caller)) {
-            return #err(#PermisoDenegado);
-        };
-
-        let saldoActual = Option.get(balances.get(usuario), 0);
-        balances.put(usuario, saldoActual + monto);
         #ok(())
     };
 };

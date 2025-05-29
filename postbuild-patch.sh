@@ -11,8 +11,8 @@ FILES=(
 for file in "${FILES[@]}"; do
   if [[ -f "$file" ]]; then
     # 1. Limpia líneas rotas
-    sed -i '/process.env.CANISTER_ID_HECHOENOAXACA-ICP-/d' "$file"
-    sed -i '/process.env.HECHOENOAXACA-ICP-/d' "$file"
+    sed -i '/import.meta.env.VITE_CANISTER_ID_HECHOENOAXACA-ICP-/d' "$file"
+    sed -i '/import.meta.env.VITE_HECHOENOAXACA-ICP-/d' "$file"
 
     # 2. Confirma que canisterId esté definido
     grep -q 'export const canisterId = "' "$file" || {

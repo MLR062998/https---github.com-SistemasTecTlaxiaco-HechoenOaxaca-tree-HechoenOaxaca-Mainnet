@@ -29,6 +29,15 @@ const Registro = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const getErrorMessage = (err) => {
+    if (!err) return "Error desconocido.";
+    if ("UsuarioYaExiste" in err) return "⚠️ El usuario ya está registrado.";
+    if ("RolNoValido" in err) return "❌ El rol seleccionado no es válido.";
+    if ("PermisoDenegado" in err) return "❌ No tienes permisos para registrar.";
+    if ("ErrorValidacion" in err) return `⚠️ ${err.ErrorValidacion}`;
+    return "❌ Error desconocido al registrar.";
+  };
+
   const handleRegister = async (event) => {
     event.preventDefault();
     setIsSubmitting(true);
@@ -48,7 +57,7 @@ const Registro = () => {
         localStorage.setItem("rol", formData.rol);
         navigate(`/${formData.rol.toLowerCase()}-dashboard`);
       } else {
-        setError("⚠️ Error al registrar el usuario");
+        setError(getErrorMessage(result.err));
       }
     } catch (err) {
       setError(`❌ ${err.message}`);

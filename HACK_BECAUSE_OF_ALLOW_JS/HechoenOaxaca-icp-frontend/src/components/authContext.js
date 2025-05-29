@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 // Definir Canister IDs
 const LOCAL_CANISTER_ID = "br5f7-7uaaa-aaaaa-qaaca-cai"; // Canister ID local
 const MAINNET_CANISTER_ID = "bkyz2-fmaaa-aaaaa-qaaaq-cai"; // Canister ID en Mainnet
-const CANISTER_ID = process.env.DFX_NETWORK === "ic" ? MAINNET_CANISTER_ID : LOCAL_CANISTER_ID;
+const CANISTER_ID = import.meta.env.VITE_DFX_NETWORK === "ic" ? MAINNET_CANISTER_ID : LOCAL_CANISTER_ID;
 // Crear contexto de autenticación
 const AuthContext = createContext();
 // Hook personalizado para usar el contexto
@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
             console.error("❌ Error: El usuario no está autenticado.");
             return null;
         }
-        const host = process.env.DFX_NETWORK === "ic" ? "https://ic0.app" : "http://127.0.0.1:4943";
+        const host = import.meta.env.VITE_DFX_NETWORK === "ic" ? "https://ic0.app" : "http://127.0.0.1:4943";
         const agent = new HttpAgent({ identity, host });
         try {
             console.log("✅ Identidad asignada correctamente:", identity.getPrincipal().toText());
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
             return null;
         }
         // Solo obtener la clave raíz en desarrollo (entorno local)
-        if (process.env.DFX_NETWORK !== "ic") {
+        if (import.meta.env.VITE_DFX_NETWORK !== "ic") {
             try {
                 console.log("🔄 Obteniendo clave raíz en desarrollo...");
                 await agent.fetchRootKey();
