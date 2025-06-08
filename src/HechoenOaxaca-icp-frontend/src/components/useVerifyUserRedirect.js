@@ -1,39 +1,66 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "./authContext";
+import { handleActorError } from "../utils/handleActorError";
 
 export function useVerifyUserRedirect() {
-  const { isAuthenticated, principalId, actor, isReady } = useAuthContext();
+  const { authState, actor, logout, principalId } = useAuthContext();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isReady || !actor || !isAuthenticated || !principalId) return;
+    if (
+      authState.status !== "authenticated" ||
+      !actor ||
+      typeof actor?.obtenerUsuario !== "function" ||
+      !principalId ||
+      principalId === "2vxsx-fae"
+    ) {
+      console.warn("⏳ useVerifyUserRedirect: esperando actor válido y autenticación...");
+      return;
+    }
 
-    const verificar = async () => {
+    let cancelled = false;
+
+    const verifyAndRedirect = async () => {
+      console.log("✅ Verificando sesión y rol...");
+
       try {
         const res = await actor.obtenerUsuario();
+        console.log("📦 obtenerUsuario:", res);
+
+        if (cancelled) return;
+
         if ("ok" in res) {
           const rol = Object.keys(res.ok.rol)[0];
           localStorage.setItem("rol", rol);
-          switch (rol) {
-            case "Artesano":
-              navigate("/artesano-dashboard", { replace: true }); break;
-            case "Cliente":
-              navigate("/cliente-dashboard", { replace: true }); break;
-            case "Intermediario":
-              navigate("/intermediario-dashboard", { replace: true }); break;
-            default:
-              navigate("/registro", { replace: true });
-          }
+
+          const route = {
+            Artesano: "/artesano-dashboard",
+            Cliente: "/cliente-dashboard",
+            Intermediario: "/intermediario-dashboard",
+          }[rol] || "/registro";
+
+          console.log("🚀 Redirigiendo a:", route);
+          navigate(route, { replace: true });
         } else {
+          console.log("🆕 Usuario no registrado. Redirigiendo a /registro");
           navigate("/registro", { replace: true });
         }
-      } catch (error) {
-        console.error("❌ Error en verificación:", error);
-        navigate("/registro", { replace: true });
+      } catch (err) {
+        console.error("❌ Error al verificar usuario:", err);
+        const handled = await handleActorError(err, logout);
+        if (!handled && !cancelled) {
+          console.warn("🛑 Sesión inválida. Forzando logout...");
+          await logout();
+          navigate("/registro", { replace: true });
+        }
       }
     };
 
-    verificar();
-  }, [isReady, isAuthenticated, principalId, actor]);
+    const timer = setTimeout(verifyAndRedirect, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [authState.status, actor, principalId]);
 }

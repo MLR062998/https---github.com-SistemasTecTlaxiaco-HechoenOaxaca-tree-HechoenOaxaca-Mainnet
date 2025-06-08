@@ -4,13 +4,12 @@ import { useNavigate } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 import { FaTrash } from "react-icons/fa";
-import { createActor, canisterId } from "declarations/HechoenOaxaca-icp-backend";
 import { useAuthContext } from "./authContext";
 import "../cliente.scss";
 
 const CarritoDeCliente = ({ carrito, setCarrito }) => {
   const navigate = useNavigate();
-  const { identity, isAuthenticated } = useAuthContext();
+  const { actor, authState } = useAuthContext();
   const [error, setError] = useState("");
 
   const eliminarProducto = (id) => {
@@ -23,14 +22,17 @@ const CarritoDeCliente = ({ carrito, setCarrito }) => {
   };
 
   const procederAlCheckout = async () => {
-    if (!isAuthenticated || !identity) {
+    if (
+      authState.status !== "authenticated" ||
+      !actor ||
+      typeof actor?.depositarFondos !== "function"
+    ) {
       setError("Debes iniciar sesión para proceder con el pago.");
       return;
     }
 
     try {
-      const actor = createActor({ identity, canisterId });
-      const total = Math.floor(calcularTotal()); // ICP entero
+      const total = Math.floor(calcularTotal());
       const resultado = await actor.depositarFondos(BigInt(total));
 
       if ("ok" in resultado) {

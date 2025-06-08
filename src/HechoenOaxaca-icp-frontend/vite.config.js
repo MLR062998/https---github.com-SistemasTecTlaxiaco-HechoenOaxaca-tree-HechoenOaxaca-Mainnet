@@ -6,6 +6,7 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+
   return {
     root: path.resolve(__dirname, "src"),
     base: "./",
@@ -27,6 +28,7 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_BACKEND_CANISTER_ID": JSON.stringify(env.VITE_BACKEND_CANISTER_ID),
       "import.meta.env.VITE_FRONTEND_CANISTER_ID": JSON.stringify(env.VITE_FRONTEND_CANISTER_ID),
       "import.meta.env.VITE_DFX_NETWORK": JSON.stringify(env.VITE_DFX_NETWORK),
+      "import.meta.env.VITE_II_CANISTER_ID": JSON.stringify(env.VITE_II_CANISTER_ID),
     },
     optimizeDeps: {
       include: ["@dfinity/principal", "@dfinity/agent", "@dfinity/auth-client"],
@@ -35,6 +37,7 @@ export default defineConfig(({ mode }) => {
       outDir: path.resolve(__dirname, "dist"),
       emptyOutDir: true,
       target: "es2020",
+      sourcemap: true,
       rollupOptions: {
         input: path.resolve(__dirname, "src/index.html"),
         output: {

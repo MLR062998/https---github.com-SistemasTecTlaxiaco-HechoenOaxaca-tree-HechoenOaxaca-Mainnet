@@ -16,7 +16,7 @@
     "dev": "npm run dev --workspace=src/HechoenOaxaca-icp-frontend",
     "build": "npm run prebuild && npm run build:frontend && npm run postbuild",
     "build:frontend": "npm run build --workspace=src/HechoenOaxaca-icp-frontend",
-    "postbuild": "./postbuild-patch.sh && ./sanitize-dist.sh",
+    "postbuild": "./scripts/postbuild-merged.sh",
     "postinstall": "node scripts/patch-rollup-ast.cjs"
   },
   "workspaces": [

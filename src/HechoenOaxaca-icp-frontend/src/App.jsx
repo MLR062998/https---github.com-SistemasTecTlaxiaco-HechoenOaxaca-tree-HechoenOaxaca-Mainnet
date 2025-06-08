@@ -1,9 +1,11 @@
-// src/App.jsx
 import React, { Suspense } from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 
 import LoadingScreen from "./components/LoadingScreen";
 import Menu from "./components/Menu";
+import ProtectedRoute from "./components/ProtectedRoute";
+import DebugStatus from "./components/DebugStatus";
+import { AuthStateListener } from "./components/AuthStateListener";
 
 import CrearProducto from "./components/CrearProducto";
 import Products from "./components/Products";
@@ -17,7 +19,7 @@ import IntermediarioDashboard from "./components/Intermediario";
 import NotificacionesCliente from "./components/NotificacionesCliente";
 import CarritoDeCliente from "./components/CarritoDeCliente";
 import CheckoutConfirmado from "./components/CheckoutConfirmado";
-import LoginSuccess from "./components/LoginSuccess";
+import LoginSuccess from "./pages/LoginSuccess";
 
 function AppContent() {
   return (
@@ -30,25 +32,55 @@ function AppContent() {
         <Route path="/compra" element={<Compra />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/wallet/*" element={<Wallet />} />
-        <Route path="/Artesano-dashboard" element={<Artesano />} />
-        <Route path="/cliente-dashboard" element={<ClienteDashboard />} />
-        <Route path="/intermediario-dashboard" element={<IntermediarioDashboard />} />
-        <Route path="/notificaciones-cliente" element={<NotificacionesCliente />} />
-        <Route path="/carrito" element={<CarritoDeCliente />} />
-        <Route path="/checkout-confirmado" element={<CheckoutConfirmado />} />
+        <Route path="/Artesano-dashboard" element={
+          <ProtectedRoute requiredRoles={["Artesano"]}>
+            <Artesano />
+          </ProtectedRoute>
+        } />
+        <Route path="/cliente-dashboard" element={
+          <ProtectedRoute requiredRoles={["Cliente"]}>
+            <ClienteDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/intermediario-dashboard" element={
+          <ProtectedRoute requiredRoles={["Intermediario"]}>
+            <IntermediarioDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/notificaciones-cliente" element={
+          <ProtectedRoute>
+            <NotificacionesCliente />
+          </ProtectedRoute>
+        } />
+        <Route path="/carrito" element={
+          <ProtectedRoute>
+            <CarritoDeCliente />
+          </ProtectedRoute>
+        } />
+        <Route path="/checkout-confirmado" element={
+          <ProtectedRoute>
+            <CheckoutConfirmado />
+          </ProtectedRoute>
+        } />
         <Route path="/login-success" element={<LoginSuccess />} />
-        <Route path="*" element={<div className="container py-5 text-center"><h2>Página no encontrada</h2></div>} />
+        <Route path="*" element={
+          <div className="container py-5 text-center">
+            <h2>Página no encontrada</h2>
+          </div>
+        } />
       </Routes>
+      {import.meta.env.DEV && <DebugStatus />}
     </>
   );
 }
 
 export default function App() {
   return (
-    <Router>
+    <>
+      <AuthStateListener />
       <Suspense fallback={<LoadingScreen message="Cargando aplicación..." />}>
         <AppContent />
       </Suspense>
-    </Router>
+    </>
   );
 }

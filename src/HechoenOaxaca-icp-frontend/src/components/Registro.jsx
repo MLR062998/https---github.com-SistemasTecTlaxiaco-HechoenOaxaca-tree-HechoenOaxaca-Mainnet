@@ -38,26 +38,28 @@ const Registro = () => {
     return "❌ Error desconocido al registrar.";
   };
 
-  const handleRegister = async (event) => {
-    event.preventDefault();
+  const handleRegister = async (e) => {
+    e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
     try {
-      if (!principalId || !actor) throw new Error("Actor o principalId no disponibles");
+      if (!actor || !principalId) {
+        throw new Error("Identidad o actor no disponibles. Por favor, vuelve a iniciar sesión.");
+      }
 
-      const result = await actor.registrarUsuario(
+      const res = await actor.registrarUsuario(
         formData.nombreCompleto,
         formData.lugarOrigen,
         formData.telefono,
         formData.rol
       );
 
-      if ("ok" in result) {
+      if ("ok" in res) {
         localStorage.setItem("rol", formData.rol);
         navigate(`/${formData.rol.toLowerCase()}-dashboard`);
       } else {
-        setError(getErrorMessage(result.err));
+        setError(getErrorMessage(res.err));
       }
     } catch (err) {
       setError(`❌ ${err.message}`);

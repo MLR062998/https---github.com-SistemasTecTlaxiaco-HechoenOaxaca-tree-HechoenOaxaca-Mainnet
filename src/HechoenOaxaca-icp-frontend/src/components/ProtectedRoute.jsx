@@ -1,18 +1,22 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+
+import { Navigate } from "react-router-dom";
 import { useAuthContext } from "./authContext";
 import VerificandoUsuario from "./VerificandoUsuario";
 
-export const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuthContext();
-  const navigate = useNavigate();
+export default function ProtectedRoute({ children, requiredRoles = [] }) {
+  const { authState, rol } = useAuthContext();
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      navigate("/", { replace: true });
-    }
-  }, [isAuthenticated, isLoading, navigate]);
+  if (authState.status === 'initializing' || authState.status === 'authenticating') {
+    return <VerificandoUsuario />;
+  }
 
-  if (isLoading || !isAuthenticated) return <VerificandoUsuario />;
+  if (authState.status !== 'authenticated') {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requiredRoles.length > 0 && !requiredRoles.includes(rol)) {
+    return <Navigate to="/no-autorizado" replace />;
+  }
+
   return children;
-};
+}
