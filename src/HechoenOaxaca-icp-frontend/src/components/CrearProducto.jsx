@@ -1,8 +1,9 @@
+// src/components/CrearProducto.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Card, Form, Button, Alert, Row, Col } from "react-bootstrap";
 import { useAuthContext } from "./authContext";
-import "../cliente.scss"; // Importamos los estilos
+import "../cliente.scss";
 
 const CrearProducto = () => {
   const { actor } = useAuthContext();
@@ -14,7 +15,7 @@ const CrearProducto = () => {
 
   const handleImageChange = (e) => {
     const selected = Array.from(e.target.files);
-    
+
     if (selected.length > 3) {
       setError("Máximo 3 imágenes permitidas.");
       return;
@@ -31,9 +32,7 @@ const CrearProducto = () => {
       }
     }
 
-    // Generar vistas previas
     const previews = selected.map(file => URL.createObjectURL(file));
-    
     setImages(selected);
     setPreviewImages(previews);
     setError("");
@@ -47,7 +46,6 @@ const CrearProducto = () => {
     const descripcion = form.descripcion.value.trim();
     const tipo = form.tipo.value;
 
-    // Validaciones
     if (!nombre || nombre.length < 3) {
       setError("El nombre debe tener al menos 3 caracteres.");
       return;
@@ -77,7 +75,6 @@ const CrearProducto = () => {
     setLoading("Registrando producto...");
 
     try {
-      // Convertir imágenes a blobs
       const imageBlobs = await Promise.all(
         images.map(async (img) => {
           const buffer = await img.arrayBuffer();
@@ -85,14 +82,12 @@ const CrearProducto = () => {
         })
       );
 
-      // Validar tamaño de blobs antes de enviar
       for (const blob of imageBlobs) {
-        if (blob.length > 2_000_000) { // ~2MB
+        if (blob.length > 2_000_000) {
           throw new Error("Una o más imágenes exceden el tamaño permitido");
         }
       }
 
-      // Llamar al backend
       const result = await actor.crearProducto(
         nombre,
         precio,
@@ -102,11 +97,12 @@ const CrearProducto = () => {
       );
 
       if ("ok" in result) {
+        const producto = result.ok;
         alert("✅ Producto registrado correctamente");
         form.reset();
         setImages([]);
         setPreviewImages([]);
-        navigate("/mis-productos");
+        navigate(`/producto/${producto.id}`);
       } else {
         setError(`Error: ${JSON.stringify(result.err)}`);
       }
@@ -194,7 +190,6 @@ const CrearProducto = () => {
                     Sube entre 1 y 3 imágenes (JPEG, PNG o WEBP). Máximo 2MB cada una.
                   </Form.Text>
 
-                  {/* Vista previa de imágenes */}
                   {previewImages.length > 0 && (
                     <div className="mt-3 d-flex flex-wrap gap-2 image-previews">
                       {previewImages.map((src, index) => (
