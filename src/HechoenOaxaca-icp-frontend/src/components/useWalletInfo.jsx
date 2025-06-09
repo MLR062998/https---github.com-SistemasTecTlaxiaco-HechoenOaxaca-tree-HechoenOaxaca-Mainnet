@@ -1,40 +1,33 @@
-// ✅ src/hooks/useWalletInfo.js
+// src/components/useWalletInfo.jsx
 import { useEffect, useState } from "react";
-import { useConnect } from "@connect2ic/react";
+import { useAuthContext } from "./authContext";
 import { Principal } from "@dfinity/principal";
-import { createActor, canisterId } from "declarations/HechoenOaxaca-icp-backend";
 
 export function useWalletInfo() {
-  const { isConnected, principal, activeProvider } = useConnect();
+  const { isAuthenticated, principalId, actor, isLoading, rol } = useAuthContext();
   const [saldo, setSaldo] = useState(null);
-  const [rol, setRol] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchWalletInfo = async () => {
-      if (!isConnected || !principal || !activeProvider?.identity) return;
+      if (!isAuthenticated || !principalId || !actor || !actor._service) {
+        setLoading(false);
+        return;
+      }
 
       try {
-        const actor = createActor(canisterId, {
-          agentOptions: { identity: activeProvider.identity },
-        });
-
-        const p = Principal.fromText(principal);
-        const s = await actor.obtenerSaldo();
-        const r = await actor.getRolUsuario(p);
-
-        setSaldo(s);
-        setRol(r);
-        localStorage.setItem("rol", r); // opcional: guarda rol globalmente
+        const p = Principal.fromText(principalId);
+        const saldoRes = await actor.obtenerSaldo();
+        setSaldo(saldoRes);
       } catch (err) {
-        console.error("❌ Error obteniendo info de wallet:", err);
+        console.error("❌ Error obteniendo saldo de wallet:", err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchWalletInfo();
-  }, [isConnected, principal, activeProvider?.identity]);
+  }, [isAuthenticated, principalId, actor]);
 
-  return { principal, saldo, rol, loading };
+  return { principal: principalId, saldo, rol, loading: loading || isLoading };
 }

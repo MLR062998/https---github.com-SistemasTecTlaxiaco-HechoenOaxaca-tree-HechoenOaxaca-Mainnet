@@ -1,6 +1,6 @@
+// src/HechoenOaxaca-icp-frontend/src/components/Artesano.jsx
 import React, { useEffect, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
-import { HechoenOaxacaIcpBackend } from "../../../declarations/HechoenOaxaca-icp-backend";
 import CrearProducto from "./CrearProducto";
 import Products from "./Products";
 import Wallet from "./Wallet";
@@ -8,7 +8,7 @@ import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import DashboardLayout from "./DashboardLayout";
-import { useConnect } from "@connect2ic/react";
+import { useAuthContext } from "./authContext";
 
 const Artesano = () => {
   const [showEditModal, setShowEditModal] = useState(false);
@@ -19,27 +19,32 @@ const Artesano = () => {
     telefono: "",
   });
 
+  const { actor, principalId, isLoading } = useAuthContext();
   const navigate = useNavigate();
-  const { principal } = useConnect();
 
   useEffect(() => {
     const fetchPerfil = async () => {
-      if (!principal) return;
+      if (!actor || !principalId) return;
       try {
-        const perfilRes = await HechoenOaxacaIcpBackend.obtenerPerfil(principal);
-        setPerfil(perfilRes);
-        setEditFormData({
-          nombreCompleto: perfilRes.nombreCompleto,
-          lugarOrigen: perfilRes.lugarOrigen,
-          telefono: perfilRes.telefono,
-        });
+        const res = await actor.obtenerUsuario();
+        if ("ok" in res) {
+          const perfilRes = res.ok;
+          setPerfil(perfilRes);
+          setEditFormData({
+            nombreCompleto: perfilRes.nombreCompleto,
+            lugarOrigen: perfilRes.lugarOrigen,
+            telefono: perfilRes.telefono,
+          });
+        } else {
+          console.warn("Perfil no encontrado:", res.err);
+        }
       } catch (error) {
-        console.error("Error al cargar el perfil:", error);
+        console.error("❌ Error al cargar el perfil:", error);
       }
     };
 
     fetchPerfil();
-  }, [principal]);
+  }, [actor, principalId]);
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
@@ -47,9 +52,9 @@ const Artesano = () => {
   };
 
   const handleSaveChanges = async () => {
+    if (!actor) return;
     try {
-      const result = await HechoenOaxacaIcpBackend.actualizarPerfil(
-        principal,
+      const result = await actor.editarPerfil(
         editFormData.nombreCompleto,
         editFormData.lugarOrigen,
         editFormData.telefono
@@ -59,12 +64,15 @@ const Artesano = () => {
         setPerfil(editFormData);
         setShowEditModal(false);
       } else {
-        console.error("Error al actualizar perfil:", result.err);
+        console.error("⚠️ Error al actualizar perfil:", result.err);
       }
     } catch (error) {
-      console.error("Error al actualizar perfil:", error);
+      console.error("❌ Error al actualizar perfil:", error);
     }
   };
+
+  if (isLoading || !actor) return <p>🔄 Cargando actor...</p>;
+  if (!perfil) return <p>📭 Cargando perfil...</p>;
 
   return (
     <DashboardLayout title="Bienvenido, Artesano">

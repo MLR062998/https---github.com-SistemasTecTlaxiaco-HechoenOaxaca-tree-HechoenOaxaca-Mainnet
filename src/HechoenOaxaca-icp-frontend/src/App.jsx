@@ -1,5 +1,5 @@
-import React, { Suspense } from "react";
-import { Route, Routes } from "react-router-dom";
+import React, { Suspense, useState } from "react";
+import { Routes, Route } from "react-router-dom";
 
 import LoadingScreen from "./components/LoadingScreen";
 import Menu from "./components/Menu";
@@ -19,9 +19,12 @@ import IntermediarioDashboard from "./components/Intermediario";
 import NotificacionesCliente from "./components/NotificacionesCliente";
 import CarritoDeCliente from "./components/CarritoDeCliente";
 import CheckoutConfirmado from "./components/CheckoutConfirmado";
+import ProductoDetalle from "./components/ProductoDetalle";
 import LoginSuccess from "./pages/LoginSuccess";
 
 function AppContent() {
+  const [carrito, setCarrito] = useState([]);
+
   return (
     <>
       <Menu />
@@ -32,6 +35,19 @@ function AppContent() {
         <Route path="/compra" element={<Compra />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/wallet/*" element={<Wallet />} />
+        <Route path="/producto/:id" element={
+          <ProductoDetalle carrito={carrito} setCarrito={setCarrito} />
+        } />
+        <Route path="/carrito" element={
+          <ProtectedRoute>
+            <CarritoDeCliente carrito={carrito} setCarrito={setCarrito} />
+          </ProtectedRoute>
+        } />
+        <Route path="/checkout-confirmado" element={
+          <ProtectedRoute>
+            <CheckoutConfirmado />
+          </ProtectedRoute>
+        } />
         <Route path="/Artesano-dashboard" element={
           <ProtectedRoute requiredRoles={["Artesano"]}>
             <Artesano />
@@ -50,16 +66,6 @@ function AppContent() {
         <Route path="/notificaciones-cliente" element={
           <ProtectedRoute>
             <NotificacionesCliente />
-          </ProtectedRoute>
-        } />
-        <Route path="/carrito" element={
-          <ProtectedRoute>
-            <CarritoDeCliente />
-          </ProtectedRoute>
-        } />
-        <Route path="/checkout-confirmado" element={
-          <ProtectedRoute>
-            <CheckoutConfirmado />
           </ProtectedRoute>
         } />
         <Route path="/login-success" element={<LoginSuccess />} />

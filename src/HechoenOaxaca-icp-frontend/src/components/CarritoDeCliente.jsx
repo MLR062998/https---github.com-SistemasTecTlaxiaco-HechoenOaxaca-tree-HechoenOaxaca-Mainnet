@@ -22,27 +22,24 @@ const CarritoDeCliente = ({ carrito, setCarrito }) => {
   };
 
   const procederAlCheckout = async () => {
-    if (
-      authState.status !== "authenticated" ||
-      !actor ||
-      typeof actor?.depositarFondos !== "function"
-    ) {
+    if (authState.status !== "authenticated" || !actor) {
       setError("Debes iniciar sesión para proceder con el pago.");
       return;
     }
 
     try {
-      const total = Math.floor(calcularTotal());
-      const resultado = await actor.depositarFondos(BigInt(total));
+      const ids = carrito.map((producto) => producto.id);
+      const respuesta = await actor.realizarCompra(ids);
 
-      if ("ok" in resultado) {
+      if ("ok" in respuesta) {
         setCarrito([]);
-        navigate("/checkout-confirmado", { state: { total } });
+        navigate("/checkout-confirmado", { state: { total: calcularTotal() } });
       } else {
-        setError("No se pudo procesar el pago.");
+        console.error("Error al procesar la compra:", respuesta.err);
+        setError(`Error al procesar la compra: ${respuesta.err}`);
       }
     } catch (err) {
-      console.error("❌ Error al procesar el pago:", err);
+      console.error("❌ Error al realizar la compra:", err);
       setError("Hubo un error al procesar el pago.");
     }
   };

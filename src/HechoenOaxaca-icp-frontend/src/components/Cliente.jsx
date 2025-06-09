@@ -1,17 +1,17 @@
+// src/components/ClienteDashboard.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HechoenOaxacaIcpBackend } from "../../../declarations/HechoenOaxaca-icp-backend";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
-import { FaBell, FaRegMoneyBillAlt, FaShoppingCart, FaUser } from "react-icons/fa";
 import Form from "react-bootstrap/Form";
 import Modal from "react-bootstrap/Modal";
-import { useConnect } from "@connect2ic/react";
+import { FaBell, FaRegMoneyBillAlt, FaShoppingCart, FaUser } from "react-icons/fa";
 import DashboardLayout from "./DashboardLayout";
+import { useAuthContext } from "./authContext";
 
 const ClienteDashboard = () => {
-  const { principal } = useConnect();
   const navigate = useNavigate();
+  const { actor, principalId, isLoading } = useAuthContext();
 
   const [productos, setProductos] = useState([]);
   const [perfil, setPerfil] = useState(null);
@@ -28,17 +28,17 @@ const ClienteDashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!actor || !principalId) return;
       try {
         setLoading(true);
-        const productosRes = await HechoenOaxacaIcpBackend.readProductos();
-        const perfilRes = await HechoenOaxacaIcpBackend.obtenerPerfil(principal);
-
+        const productosRes = await actor.listarProductos();
+        const perfilRes = await actor.obtenerUsuario();
         setProductos(productosRes);
-        setPerfil(perfilRes);
+        setPerfil(perfilRes.ok);
         setEditFormData({
-          nombreCompleto: perfilRes.nombreCompleto,
-          lugarOrigen: perfilRes.lugarOrigen,
-          telefono: perfilRes.telefono,
+          nombreCompleto: perfilRes.ok.nombreCompleto,
+          lugarOrigen: perfilRes.ok.lugarOrigen,
+          telefono: perfilRes.ok.telefono,
         });
       } catch (error) {
         console.error("Error al cargar datos:", error);
@@ -47,16 +47,14 @@ const ClienteDashboard = () => {
       }
     };
 
-    if (principal) {
-      fetchData();
-    }
-  }, [principal]);
+    fetchData();
+  }, [actor, principalId]);
 
   const agregarAlCarrito = (producto) => setCarrito([...carrito, producto]);
 
   const filteredProducts = productos.filter((producto) => {
     const matchSearch = producto.nombre.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchCategory = selectedCategory ? producto.categoria === selectedCategory : true;
+    const matchCategory = selectedCategory ? producto.tipo === selectedCategory : true;
     return matchSearch && matchCategory;
   });
 
@@ -67,8 +65,7 @@ const ClienteDashboard = () => {
 
   const handleSaveChanges = async () => {
     try {
-      const result = await HechoenOaxacaIcpBackend.actualizarPerfil(
-        principal,
+      const result = await actor.editarPerfil(
         editFormData.nombreCompleto,
         editFormData.lugarOrigen,
         editFormData.telefono
@@ -87,7 +84,6 @@ const ClienteDashboard = () => {
 
   return (
     <DashboardLayout title="Bienvenido, Cliente">
-      {/* Controles de búsqueda y filtros */}
       <div className="d-flex justify-content-between align-items-center my-3 flex-wrap gap-3">
         <div className="d-flex gap-2">
           <Form.Control
@@ -101,9 +97,9 @@ const ClienteDashboard = () => {
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
             <option value="">Todas las categorías</option>
-            <option value="dulces tradicionales">Dulces Tradicionales</option>
-            <option value="artesanías">Artesanías</option>
-            <option value="textiles">Textiles</option>
+            <option value="dulces">Dulces Tradicionales</option>
+            <option value="artesania">Artesanías</option>
+            <option value="textil">Textiles</option>
           </Form.Select>
         </div>
 
@@ -123,7 +119,6 @@ const ClienteDashboard = () => {
         </div>
       </div>
 
-      {/* Modal de edición */}
       <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Editar Perfil</Modal.Title>
@@ -169,7 +164,6 @@ const ClienteDashboard = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Listado de productos */}
       <h4 className="text-center mt-4">Explorar Productos</h4>
       {loading ? (
         <p className="text-center">Cargando productos...</p>

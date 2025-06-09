@@ -1,7 +1,7 @@
 // src/components/DashboardLayout.jsx
 import React from "react";
 import { useWalletInfo } from "./useWalletInfo";
-import { ConnectButton } from "@connect2ic/react";
+import AuthButton from "./AuthButton";
 import { Link } from "react-router-dom";
 
 const DashboardLayout = ({ title, children }) => {
@@ -12,15 +12,18 @@ const DashboardLayout = ({ title, children }) => {
       <header className="bg-white shadow p-4 flex justify-between items-center">
         <div>
           <h1 className="text-xl font-bold">{title}</h1>
-          {!loading && (
+          {loading ? (
+            <div className="text-sm text-gray-500 animate-pulse">🔄 Cargando información de wallet...</div>
+          ) : rol ? (
             <p className="text-sm text-gray-600">
               Rol: <strong>{rol}</strong> | Saldo: <strong>{saldo} ICP</strong>
             </p>
+          ) : (
+            <p className="text-sm text-red-500">⚠️ Rol no asignado. Contacta soporte.</p>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <ConnectButton />
-          <span className="text-xs text-gray-400">{principal?.slice(0, 8)}...</span>
+          <AuthButton />
         </div>
       </header>
 

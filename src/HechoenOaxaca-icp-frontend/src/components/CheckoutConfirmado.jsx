@@ -1,20 +1,27 @@
-// src/components/CheckoutConfirmado.jsx
 import React from "react";
 import { useLocation, Link } from "react-router-dom";
-import { Container, Button } from "react-bootstrap";
+import { Container, Button, Row, Col, Card } from "react-bootstrap";
 
 const CheckoutConfirmado = () => {
-  const location = useLocation();
-  const total = location.state?.total || 0;
+  const { state } = useLocation();
+  const total = state?.total || 0;
 
   return (
-    <Container className="text-center mt-5">
-      <h2>✅ Compra completada</h2>
-      <p>Gracias por tu compra.</p>
-      <p>Total pagado: {total} ICP</p>
-      <Link to="/">
-        <Button variant="primary">Volver al inicio</Button>
-      </Link>
+    <Container className="mt-5">
+      <Row className="justify-content-center">
+        <Col md={6}>
+          <Card className="text-center shadow">
+            <Card.Body>
+              <h2 className="text-success">✅ Compra Exitosa</h2>
+              <p className="mt-3">Gracias por tu compra.</p>
+              <h5>Total pagado: <strong>{parseFloat(total).toFixed(2)} ICP</strong></h5>
+              <Link to="/" className="mt-4 d-inline-block">
+                <Button variant="primary">Volver al inicio</Button>
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
     </Container>
   );
 };

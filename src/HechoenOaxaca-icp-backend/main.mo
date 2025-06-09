@@ -135,6 +135,111 @@ actor class HechoenOaxacaBackend() = this {
         Option.get(balances.get(caller), 0)
     };
 
+    public shared ({ caller }) func depositarFondos(monto : Nat) : async Result.Result<(), AplicationError> {
+        if (Principal.isAnonymous(caller)) {
+            return #err(#PermisoDenegado);
+        };
+        let saldoActual = Option.get(balances.get(caller), 0);
+        balances.put(caller, saldoActual + monto);
+        #ok(())
+    };
+
+    public shared ({ caller }) func transferirSaldo(destino : Principal, monto : Nat) : async Result.Result<(), AplicationError> {
+        if (Principal.isAnonymous(caller)) return #err(#PermisoDenegado);
+        if (monto == 0) return #err(#ErrorValidacion("El monto debe ser mayor a 0"));
+        if (caller == destino) return #err(#ErrorValidacion("No puedes transferir a ti mismo"));
+
+        let saldoOrigen = Option.get(balances.get(caller), 0);
+        if (saldoOrigen < monto) return #err(#SaldoInsuficiente);
+
+        let saldoDestino = Option.get(balances.get(destino), 0);
+
+        balances.put(caller, saldoOrigen - monto);
+        balances.put(destino, saldoDestino + monto);
+        #ok(())
+    };
+
+    public shared ({ caller }) func realizarCompra(ids : [Principal]) : async Result.Result<(), AplicationError> {
+    if (Principal.isAnonymous(caller)) {
+        return #err(#PermisoDenegado);
+    };
+
+    // Validar productos y calcular total
+    var total : Nat = 0;
+    for (id in ids.vals()) {
+        switch (productos.get(id)) {
+            case (?prod) {
+                if (not prod.activo) return #err(#ErrorValidacion("Producto inactivo o ya vendido"));
+                if (prod.artesano == caller) return #err(#ErrorValidacion("No puedes comprar tus propios productos"));
+                if (prod.precio <= 0) return #err(#ErrorValidacion("El precio debe ser positivo"));
+                
+                // Convertir precio Float a Nat (redondeando hacia arriba)
+                let precioInt = Float.toInt(Float.ceil(prod.precio));
+                let precioNat = Int.abs(precioInt);
+                total += precioNat;
+            };
+            case null return #err(#ProductoNoExiste);
+        };
+    };
+
+    // Verificar saldo
+    let saldoActual = Option.get(balances.get(caller), 0);
+    if (saldoActual < total) return #err(#SaldoInsuficiente);
+
+    // Procesar compra
+    try {
+        // 1. Descontar saldo al comprador
+        balances.put(caller, saldoActual - total);
+
+        // 2. Transferir a artesanos y marcar productos como vendidos
+        for (id in ids.vals()) {
+            switch (productos.get(id)) {
+                case (?prod) {
+                    // Transferir al artesano
+                    let saldoArtesano = Option.get(balances.get(prod.artesano), 0);
+                    let precioInt = Float.toInt(Float.ceil(prod.precio));
+                    let montoArtesano = Int.abs(precioInt);
+                    balances.put(prod.artesano, saldoArtesano + montoArtesano);
+
+                    // Marcar producto como vendido
+                    let productoVendido : Producto = {
+                        id = prod.id;
+                        nombre = prod.nombre;
+                        precio = prod.precio;
+                        descripcion = prod.descripcion;
+                        tipo = prod.tipo;
+                        imagenes = prod.imagenes;
+                        artesano = prod.artesano;
+                        fechaCreacion = prod.fechaCreacion;
+                        activo = false; // Producto vendido
+                    };
+                    productos.put(id, productoVendido);
+                };
+                case null ();
+            };
+        };
+        #ok(())
+    } catch (err) {
+        // Revertir cambios en caso de error
+        balances.put(caller, saldoActual);
+        #err(#ErrorValidacion("Error al procesar la compra"))
+    }
+};
+
+    public shared ({ caller }) func registrarCompra(productosIds : [Principal]) : async Result.Result<(), AplicationError> {
+        for (id in productosIds.vals()) {
+            switch (productos.get(id)) {
+                case (?prod) {
+                    if (not prod.activo) return #err(#ProductoNoExiste);
+                    // Marcar como vendido
+                    productos.put(id, { prod with activo = false });
+                };
+                case null return #err(#ProductoNoExiste);
+            };
+        };
+        #ok(())
+    };
+
     public shared ({ caller }) func crearProducto(
         nombre : Text,
         precio : Float,
@@ -174,7 +279,48 @@ actor class HechoenOaxacaBackend() = this {
         Iter.toArray(productos.vals())
     };
 
-    
+    public shared ({ caller }) func updateProducto(
+        id : Principal,
+        nombre : Text,
+        precio : Float,
+        descripcion : Text,
+        tipo : Text,
+        imagenes : [Blob]
+    ) : async Result.Result<(), AplicationError> {
+        switch (productos.get(id)) {
+            case (?prod) {
+                if (prod.artesano != caller) return #err(#PermisoDenegado);
+                if (imagenes.size() > 5) {
+                    return #err(#ErrorValidacion("Máximo 5 imágenes"));
+                };
+                productos.put(id, {
+                    id = id;
+                    nombre = nombre;
+                    precio = precio;
+                    descripcion = descripcion;
+                    tipo = tipo;
+                    imagenes = imagenes;
+                    artesano = caller;
+                    fechaCreacion = prod.fechaCreacion;
+                    activo = true;
+                });
+                #ok(())
+            };
+            case null return #err(#ProductoNoExiste);
+        }
+    };
+
+    public shared ({ caller }) func deleteProducto(id : Principal) : async Result.Result<(), AplicationError> {
+        switch (productos.get(id)) {
+            case (?prod) {
+                if (prod.artesano != caller) return #err(#PermisoDenegado);
+                productos.delete(id);
+                #ok(())
+            };
+            case null return #err(#ProductoNoExiste);
+        }
+    };
+
     public shared ({ caller }) func editarPerfil(
         nombreCompleto : Text,
         lugarOrigen : Text,
@@ -204,12 +350,74 @@ actor class HechoenOaxacaBackend() = this {
         }
     };
 
-public shared ({ caller }) func depositarFondos(monto : Nat) : async Result.Result<(), AplicationError> {
-        if (Principal.isAnonymous(caller)) {
-            return #err(#PermisoDenegado);
-        };
-        let saldoActual = Option.get(balances.get(caller), 0);
-        balances.put(caller, saldoActual + monto);
-        #ok(())
+    public func runTests() : async () {
+        let dummy1 = Principal.fromText("aaaaa-aa");
+        let dummy2 = Principal.fromText("bbbbb-bb");
+
+        // Registrar usuarios de prueba
+        let _ = await registrarUsuario("Test Origen", "Oaxaca", "1234567890", "artesano");
+        let _ = await registrarUsuario("Test Destino", "Oaxaca", "0987654321", "cliente");
+
+        // Configurar saldos iniciales
+        balances.put(dummy1, 100);
+        balances.put(dummy2, 20);
+
+        // Test 1: Transferencia exitosa
+        let t1 = await transferirSaldo(dummy2, 30);
+        assert(Result.isOk(t1));
+        assert(Option.get(balances.get(dummy1), 0) == 70);
+        assert(Option.get(balances.get(dummy2), 0) == 50);
+
+        // Test 2: Transferencia a sí mismo
+        let t2 = await transferirSaldo(dummy1, 10);
+        assert(Result.isErr(t2));
+
+        // Test 3: Saldo insuficiente
+        let t3 = await transferirSaldo(dummy2, 100);
+        assert(Result.isErr(t3));
+
+        // Test de productos
+        productos.put(dummy1, {
+            id = dummy1;
+            nombre = "Olla";
+            precio = 12.5;
+            descripcion = "Barro";
+            tipo = "artesania";
+            imagenes = [Blob.fromArray([1,2,3])];
+            artesano = dummy1;
+            fechaCreacion = Time.now();
+            activo = true;
+        });
+
+        let u1 = await updateProducto(dummy1, "Olla grande", 15.0, "Barro pulido", "textil", []);
+        assert(Result.isOk(u1));
+
+        let d1 = await deleteProducto(dummy1);
+        assert(Result.isOk(d1));
+
+        // Test de compra
+        let comprador = Principal.fromText("ccccc-cc");
+        let _ = await registrarUsuario("Comprador Test", "Oaxaca", "5555555555", "cliente");
+        balances.put(comprador, 1000);
+
+        // Crear producto de prueba
+        let productoId = await generateId();
+        let _ = await crearProducto(
+            "Producto Test", 
+            50.0, 
+            "Descripción test", 
+            "artesania", 
+            []
+        );
+
+        // Test compra exitosa
+        let c1 = await realizarCompra([productoId]);
+        assert(Result.isOk(c1));
+
+        // Test producto ya vendido
+        let c2 = await realizarCompra([productoId]);
+        assert(Result.isErr(c2));
+
+        Debug.print("✅ Todos los tests pasaron correctamente");
     };
 };
