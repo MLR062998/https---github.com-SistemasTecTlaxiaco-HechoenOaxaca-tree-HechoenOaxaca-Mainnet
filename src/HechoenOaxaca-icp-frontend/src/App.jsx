@@ -1,5 +1,6 @@
+// src/HechoenOaxaca-icp-frontend/src/App.jsx
 import React, { Suspense, useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import LoadingScreen from "./components/LoadingScreen";
 import Menu from "./components/Menu";
@@ -35,45 +36,19 @@ function AppContent() {
         <Route path="/compra" element={<Compra />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/wallet/*" element={<Wallet />} />
-        <Route path="/producto/:id" element={
-          <ProductoDetalle carrito={carrito} setCarrito={setCarrito} />
-        } />
-        <Route path="/carrito" element={
-          <ProtectedRoute>
-            <CarritoDeCliente carrito={carrito} setCarrito={setCarrito} />
-          </ProtectedRoute>
-        } />
-        <Route path="/checkout-confirmado" element={
-          <ProtectedRoute>
-            <CheckoutConfirmado />
-          </ProtectedRoute>
-        } />
-        <Route path="/Artesano-dashboard" element={
-          <ProtectedRoute requiredRoles={["Artesano"]}>
-            <Artesano />
-          </ProtectedRoute>
-        } />
-        <Route path="/cliente-dashboard" element={
-          <ProtectedRoute requiredRoles={["Cliente"]}>
-            <ClienteDashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/intermediario-dashboard" element={
-          <ProtectedRoute requiredRoles={["Intermediario"]}>
-            <IntermediarioDashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/notificaciones-cliente" element={
-          <ProtectedRoute>
-            <NotificacionesCliente />
-          </ProtectedRoute>
-        } />
+        <Route path="/producto/:id" element={<ProductoDetalle carrito={carrito} setCarrito={setCarrito} />} />
+        <Route path="/carrito" element={<ProtectedRoute><CarritoDeCliente carrito={carrito} setCarrito={setCarrito} /></ProtectedRoute>} />
+        <Route path="/checkout-confirmado" element={<ProtectedRoute><CheckoutConfirmado /></ProtectedRoute>} />
+        <Route path="/Artesano-dashboard/*" element={<ProtectedRoute requiredRoles={["Artesano"]}><Artesano /></ProtectedRoute>} />
+        <Route path="/cliente-dashboard" element={<ProtectedRoute requiredRoles={["Cliente"]}><ClienteDashboard /></ProtectedRoute>} />
+        <Route path="/intermediario-dashboard" element={<ProtectedRoute requiredRoles={["Intermediario"]}><IntermediarioDashboard /></ProtectedRoute>} />
+        <Route path="/notificaciones-cliente" element={<ProtectedRoute><NotificacionesCliente /></ProtectedRoute>} />
         <Route path="/login-success" element={<LoginSuccess />} />
-        <Route path="*" element={
-          <div className="container py-5 text-center">
-            <h2>Página no encontrada</h2>
-          </div>
-        } />
+
+        {/* Redirección directa si alguien accede a /mis-productos global */}
+        <Route path="/mis-productos" element={<Navigate to="/Artesano-dashboard/mis-productos" replace />} />
+
+        <Route path="*" element={<div className="container py-5 text-center"><h2>Página no encontrada</h2><p>La URL solicitada no existe.</p></div>} />
       </Routes>
       {import.meta.env.DEV && <DebugStatus />}
     </>

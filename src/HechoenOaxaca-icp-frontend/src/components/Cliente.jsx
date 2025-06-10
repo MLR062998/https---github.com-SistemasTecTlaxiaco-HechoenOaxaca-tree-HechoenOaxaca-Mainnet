@@ -84,8 +84,15 @@ const ClienteDashboard = () => {
 
   return (
     <DashboardLayout title="Bienvenido, Cliente">
-      <div className="d-flex justify-content-between align-items-center my-3 flex-wrap gap-3">
-        <div className="d-flex gap-2">
+      <div className="cliente-dashboard">
+        <div className="botones-superiores">
+          <Button className="btn-wallet" onClick={() => navigate("/wallet")}>💰 Wallet</Button>
+          <Button className="btn-notificaciones" onClick={() => navigate("/notificaciones-cliente")}>🔔 Notificaciones</Button>
+          <Button className="btn-carrito" onClick={() => navigate("/carrito", { state: { carrito } })}>🛒 Carrito</Button>
+          <Button onClick={() => setShowEditModal(true)}>👤 Perfil</Button>
+        </div>
+
+        <div className="search-filter-container">
           <Form.Control
             type="text"
             placeholder="Buscar productos..."
@@ -103,94 +110,90 @@ const ClienteDashboard = () => {
           </Form.Select>
         </div>
 
-        <div className="d-flex gap-2">
-          <Button onClick={() => navigate("/wallet")}>
-            <FaRegMoneyBillAlt /> Wallet
-          </Button>
-          <Button onClick={() => navigate("/notificaciones-cliente")}>
-            <FaBell /> Notificaciones
-          </Button>
-          <Button onClick={() => navigate("/carrito", { state: { carrito } })}>
-            <FaShoppingCart /> Carrito
-          </Button>
-          <Button onClick={() => setShowEditModal(true)}>
-            <FaUser /> Perfil
-          </Button>
+        <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
+          <Modal.Header closeButton>
+            <Modal.Title>Editar Perfil</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Label>Nombre Completo</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="nombreCompleto"
+                  value={editFormData.nombreCompleto}
+                  onChange={handleEditChange}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Lugar de Origen</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="lugarOrigen"
+                  value={editFormData.lugarOrigen}
+                  onChange={handleEditChange}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Teléfono</Form.Label>
+                <Form.Control
+                  type="tel"
+                  name="telefono"
+                  value={editFormData.telefono}
+                  onChange={handleEditChange}
+                />
+              </Form.Group>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" onClick={handleSaveChanges}>
+              Guardar Cambios
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        <div className="productos-disponibles">
+          <h4>Explorar Productos</h4>
+          {loading ? (
+            <p className="text-center">Cargando productos...</p>
+          ) : (
+            <div className="d-flex flex-wrap justify-content-center gap-3">
+              {filteredProducts.map((producto) => (
+                <Card key={producto.id} className="card">
+                  <Card.Img
+                    variant="top"
+                    src={producto.imagenes?.[0]}
+                    alt={producto.nombre}
+                    className="card-img-top"
+                  />
+                  <Card.Body className="card-body">
+                    <Card.Title>{producto.nombre}</Card.Title>
+                    <Card.Text>
+                      <strong>Precio:</strong> ${producto.precio.toFixed(2)}<br />
+                      {producto.descripcion}
+                    </Card.Text>
+                    <Button
+                      className="btn-primary"
+                      onClick={() => navigate(`/producto/${producto.id}`, { state: producto })}
+                    >
+                      Ver más
+                    </Button>
+                    <Button
+                      className="btn-success"
+                      onClick={() => agregarAlCarrito(producto)}
+                    >
+                      Agregar al Carrito
+                    </Button>
+                  </Card.Body>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Editar Perfil</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Nombre Completo</Form.Label>
-              <Form.Control
-                type="text"
-                name="nombreCompleto"
-                value={editFormData.nombreCompleto}
-                onChange={handleEditChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Lugar de Origen</Form.Label>
-              <Form.Control
-                type="text"
-                name="lugarOrigen"
-                value={editFormData.lugarOrigen}
-                onChange={handleEditChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Teléfono</Form.Label>
-              <Form.Control
-                type="tel"
-                name="telefono"
-                value={editFormData.telefono}
-                onChange={handleEditChange}
-              />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-            Cancelar
-          </Button>
-          <Button variant="primary" onClick={handleSaveChanges}>
-            Guardar Cambios
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      <h4 className="text-center mt-4">Explorar Productos</h4>
-      {loading ? (
-        <p className="text-center">Cargando productos...</p>
-      ) : (
-        <div className="d-flex flex-wrap justify-content-center gap-3">
-          {filteredProducts.map((producto) => (
-            <Card key={producto.id} style={{ width: "18rem" }}>
-              <Card.Body>
-                <Card.Title>{producto.nombre}</Card.Title>
-                <Card.Text>
-                  <strong>Precio:</strong> ${producto.precio.toFixed(2)}<br />
-                  {producto.descripcion}
-                </Card.Text>
-                <Button
-                  variant="primary"
-                  onClick={() => navigate(`/producto/${producto.id}`, { state: producto })}
-                >
-                  Ver más
-                </Button>{" "}
-                <Button variant="success" onClick={() => agregarAlCarrito(producto)}>
-                  Agregar al Carrito
-                </Button>
-              </Card.Body>
-            </Card>
-          ))}
-        </div>
-      )}
     </DashboardLayout>
   );
 };

@@ -9,6 +9,16 @@ import Compra from "./Compra";
 import "../index.scss";
 import "bootstrap/dist/css/bootstrap.min.css";
 
+const blobToBase64 = (blobArray) => {
+  const uint8 = new Uint8Array(blobArray);
+  const blob = new Blob([uint8], { type: "image/jpeg" });
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+};
+
 const Home = () => {
   const { actor } = useAuthContext();
   const [products, setProducts] = useState([]);
@@ -18,19 +28,24 @@ const Home = () => {
   const navigate = useNavigate();
 
   const fetchProducts = async () => {
-    if (!actor?.listarProductos) return;
+    if (!actor?.listarProductosActivos) return;
 
     setLoading(true);
     try {
-      const result = await actor.listarProductos();
-      if (!Array.isArray(result)) throw new Error("listarProductos no devolvió una lista");
+      const result = await actor.listarProductosActivos();
+      if (!Array.isArray(result)) throw new Error("listarProductosActivos no devolvió una lista");
 
-      const productosProcesados = result.map((producto) => ({
-        ...producto,
-        imagenes: producto.imagenes.map((img) =>
-          URL.createObjectURL(new Blob([new Uint8Array(img)], { type: "image/jpeg" }))
-        ),
-      }));
+      const productosProcesados = await Promise.all(
+        result.map(async (producto) => {
+          const imagenBase64 = producto.imagenes[0]
+            ? await blobToBase64(producto.imagenes[0])
+            : null;
+          return {
+            ...producto,
+            imgUrl: imagenBase64,
+          };
+        })
+      );
 
       setProducts(productosProcesados);
     } catch (err) {
@@ -71,13 +86,17 @@ const Home = () => {
             {products.map((product) => (
               <div key={product.id} className="col-md-4 mb-4">
                 <Card>
-                  {product.imagenes.length > 0 && (
+                  {product.imgUrl ? (
                     <Card.Img
                       variant="top"
-                      src={product.imagenes[0]}
+                      src={product.imgUrl}
                       alt={`Imagen de ${product.nombre}`}
                       style={{ maxHeight: "200px", objectFit: "cover" }}
                     />
+                  ) : (
+                    <div className="bg-light" style={{ height: "200px" }}>
+                      <span className="text-muted">Sin imagen</span>
+                    </div>
                   )}
                   <Card.Body>
                     <Card.Title>{product.nombre}</Card.Title>
