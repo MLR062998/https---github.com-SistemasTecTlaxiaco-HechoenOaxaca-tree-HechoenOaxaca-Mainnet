@@ -21,9 +21,15 @@ const Products = () => {
     try {
       const result = await actor.listarProductos();
 
-      const userProducts = result.filter(
-        (product) => product.artesano.toText() === principalId.toText()
-      );
+      const userProducts = result.filter((product) => {
+        const artesanoId = typeof product.artesano?.toText === "function" 
+          ? product.artesano.toText() 
+          : String(product.artesano);
+        const userId = typeof principalId?.toText === "function" 
+          ? principalId.toText() 
+          : String(principalId);
+        return artesanoId === userId;
+      });
 
       const processed = userProducts.map((product) => ({
         ...product,

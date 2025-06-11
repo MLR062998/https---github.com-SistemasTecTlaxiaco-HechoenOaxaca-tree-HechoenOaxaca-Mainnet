@@ -1,6 +1,6 @@
 // src/components/Artesano.jsx
 import React, { useEffect, useState } from "react";
-import { Route, Routes, useNavigate } from "react-router-dom";
+import { Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import CrearProducto from "./CrearProducto";
 import Products from "./Products";
 import Wallet from "./Wallet";
@@ -9,7 +9,7 @@ import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import DashboardLayout from "./DashboardLayout";
 import { useAuthContext } from "./authContext";
-import "../cliente.scss";
+import "../artesano.scss";
 
 const Artesano = () => {
   const [showEditModal, setShowEditModal] = useState(false);
@@ -22,6 +22,9 @@ const Artesano = () => {
 
   const { actor, principalId, isLoading } = useAuthContext();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isDashboard = location.pathname === "/artesano-dashboard";
 
   useEffect(() => {
     if (!isLoading && !principalId) {
@@ -83,6 +86,14 @@ const Artesano = () => {
 
   return (
     <DashboardLayout title="Bienvenido, Artesano">
+      {!isDashboard && (
+        <div className="mb-3 text-end">
+          <Button variant="outline-secondary" onClick={() => navigate("/artesano-dashboard")}>
+            🏠 Volver al Dashboard
+          </Button>
+        </div>
+      )}
+
       <Routes>
         <Route
           index
@@ -93,19 +104,19 @@ const Artesano = () => {
               <p><strong>Origen:</strong> {perfil.lugarOrigen}</p>
               <p><strong>Teléfono:</strong> {perfil.telefono}</p>
               <div className="botones-superiores">
-                <Button className="btn-wallet" onClick={() => navigate("nuevo-producto")}>
+                <Button className="btn-crear" onClick={() => navigate("nuevo-producto")}>
                   🛠 Crear Producto
                 </Button>
-                <Button className="btn-wallet" onClick={() => navigate("mis-productos")}>
+                <Button className="btn-productos" onClick={() => navigate("mis-productos")}>
                   📦 Ver Mis Productos
                 </Button>
                 <Button className="btn-wallet" onClick={() => navigate("wallet")}>
                   💰 Wallet
                 </Button>
-                <Button className="btn-notificaciones" onClick={() => navigate("notificaciones")}>
+                <Button className="btn-notif" onClick={() => navigate("notificaciones")}>
                   🔔 Notificaciones
                 </Button>
-                <Button variant="outline-primary" onClick={() => setShowEditModal(true)}>
+                <Button className="btn-editar" variant="outline-primary" onClick={() => setShowEditModal(true)}>
                   ✏️ Editar Perfil
                 </Button>
               </div>

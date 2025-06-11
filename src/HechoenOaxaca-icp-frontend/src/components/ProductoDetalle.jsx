@@ -3,19 +3,21 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button, Card, Container, Row, Col } from "react-bootstrap";
 import { useAuthContext } from "./authContext";
+import { useCarrito } from "../context/CarritoContext";
 
-const ProductoDetalle = ({ carrito, setCarrito }) => {
+const ProductoDetalle = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { actor } = useAuthContext();
+  const { agregarAlCarrito } = useCarrito();
 
   const producto = location.state;
 
   const handleAgregarAlCarrito = () => {
     if (!producto) return;
-    setCarrito((prev) => [...prev, producto]);
+    agregarAlCarrito(producto);
     alert("Producto agregado al carrito");
-    navigate("/carrito", { state: { carrito: [...carrito, producto] } });
+    navigate("/carrito");
   };
 
   const handleCompraDirecta = async () => {
