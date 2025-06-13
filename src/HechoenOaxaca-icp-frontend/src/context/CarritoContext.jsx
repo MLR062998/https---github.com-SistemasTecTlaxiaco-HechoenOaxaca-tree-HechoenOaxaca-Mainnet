@@ -21,11 +21,22 @@ export const CarritoProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("carrito", JSON.stringify(carrito));
+    const replacer = (key, value) =>
+      typeof value === "bigint" ? value.toString() : value;
+
+    try {
+      const json = JSON.stringify(carrito, replacer);
+      localStorage.setItem("carrito", json);
+    } catch (error) {
+      console.error("❌ Error serializando el carrito:", error);
+    }
   }, [carrito]);
 
   const agregarAlCarrito = (producto) => {
-    setCarrito((prev) => [...prev, producto]);
+    setCarrito((prev) => {
+      if (prev.some((item) => item.id === producto.id)) return prev;
+      return [...prev, producto];
+    });
   };
 
   const eliminarDelCarrito = (id) => {
@@ -37,10 +48,9 @@ export const CarritoProvider = ({ children }) => {
     localStorage.removeItem("carrito");
   };
 
-  const total = useMemo(
-    () => carrito.reduce((sum, item) => sum + (item.precio || 0), 0),
-    [carrito]
-  );
+  const total = useMemo(() => {
+    return carrito.reduce((sum, item) => sum + (item.precio || 0), 0);
+  }, [carrito]);
 
   return (
     <CarritoContext.Provider

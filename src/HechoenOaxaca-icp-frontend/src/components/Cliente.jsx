@@ -8,6 +8,8 @@ import Modal from "react-bootstrap/Modal";
 import { FaBell, FaShoppingCart, FaUser } from "react-icons/fa";
 import DashboardLayout from "./DashboardLayout";
 import { useAuthContext } from "./authContext";
+import Compra from "./Compra";
+import { useCarrito } from "../context/CarritoContext";
 
 const blobToBase64 = (blobArray) => {
   const uint8 = new Uint8Array(blobArray);
@@ -23,6 +25,7 @@ const ClienteDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { actor, principalId, isLoading } = useAuthContext();
+  const { agregarAlCarrito } = useCarrito();
 
   const [productos, setProductos] = useState([]);
   const [perfil, setPerfil] = useState(null);
@@ -50,13 +53,27 @@ const ClienteDashboard = () => {
         const perfilRes = await actor.obtenerUsuario();
 
         const productosConImagen = await Promise.all(
-          productosRes.map(async (producto) => {
-            const imagenBase64 = producto.imagenes?.[0]
-              ? await blobToBase64(producto.imagenes[0])
-              : null;
-            return { ...producto, imgUrl: imagenBase64 };
-          })
-        );
+  productosRes.map(async (producto) => {
+    const imagenesBase64 = await Promise.all(
+      producto.imagenes.map(async (img) => {
+        const uint8 = new Uint8Array(img);
+        const blob = new Blob([uint8], { type: "image/jpeg" });
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      })
+    );
+
+    return {
+      ...producto,
+      imagenes: imagenesBase64,
+      imgUrl: imagenesBase64[0] || null,
+    };
+  })
+);
+
 
         setProductos(productosConImagen);
         setPerfil(perfilRes.ok);
@@ -175,6 +192,12 @@ const ClienteDashboard = () => {
           </div>
         )}
       </div>
+
+      <Compra
+        show={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        product={selectedProduct}
+      />
     </DashboardLayout>
   );
 };
