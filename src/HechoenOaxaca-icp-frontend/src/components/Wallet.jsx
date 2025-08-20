@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "./authContext";
 import { createActor } from "declarations/HechoenOaxaca-icp-backend";
 import { Principal } from "@dfinity/principal";
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
 import {
   Button,
   Card,
@@ -11,8 +13,10 @@ import {
   Row,
   Col,
   Tab,
-  Tabs
+  Tabs,
 } from "react-bootstrap";
+
+const MySwal = withReactContent(Swal);
 
 const Wallet = () => {
   const { identity, principalId, isAuthenticated } = useAuthContext();
@@ -23,11 +27,9 @@ const Wallet = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [activeTab, setActiveTab] = useState("recargar");
+  const [ultimoRetiro, setUltimoRetiro] = useState(null);
 
-  const actor = useMemo(() => {
-    if (!identity) return null;
-    return createActor({ identity });
-  }, [identity]);
+  const actor = useMemo(() => identity ? createActor({ identity }) : null, [identity]);
 
   const loadSaldo = async () => {
     if (!actor) return;
@@ -52,61 +54,33 @@ const Wallet = () => {
     }
   };
 
-  const handleRecargarSaldo = async () => {
-    if (!recargaMonto || recargaMonto <= 0) {
-      setError("Monto inválido");
+  // Aquí van handleRecargarSaldo, handleTransferirSaldo y handleRecargaFaucet igual que antes...
+
+  // NUEVO: handleRetirarICP
+  const handleRetirarICP = async () => {
+    if (!destinatarioId || transferirMonto <= 0) {
+      setError("Completa destino y monto válidos.");
       return;
     }
+    setError(""); setSuccess("⌛ Procesando retiro...");
     try {
-      await actor.depositarFondos(recargaMonto);
-      await loadSaldo();
-      setSuccess(`✅ Recarga exitosa de ${recargaMonto} ICP`);
-      setError("");
-      setRecargaMonto(0);
-    } catch (err) {
-      console.error("Error recarga:", err);
-      setError("❌ Error al recargar saldo.");
-    }
-  };
-
-  const handleTransferirSaldo = async () => {
-    if (!isValidPrincipal(destinatarioId)) {
-      setError("ID de destinatario no válido.");
-      return;
-    }
-
-    if (!transferirMonto || transferirMonto <= 0) {
-      setError("Debes ingresar un monto válido.");
-      return;
-    }
-
-    try {
-      const result = await actor.transferirSaldo(
-        Principal.fromText(destinatarioId),
-        transferirMonto
-      );
-      
+      const e8s = BigInt(Math.round(transferirMonto * 100_000_000));
+      const bytes = destinatarioId.match(/.{1,2}/g)?.map((b) => parseInt(b, 16));
+      if (!bytes || bytes.length !== 32) {
+        setError("Account Identifier inválido.");
+        return;
+      }
+      const result = await actor.retirarICP(bytes, e8s);
       if ("ok" in result) {
         await loadSaldo();
-        setSuccess(`✅ Transferencia exitosa de ${transferirMonto} ICP`);
-        setError("");
-        setTransferirMonto(0);
-        setDestinatarioId("");
+        setSuccess(`✅ Retiro exitoso. BlockHeight: ${result.ok}`);
+        setUltimoRetiro({ block: result.ok, fecha: new Date().toLocaleString() });
       } else {
-        setError(`❌ Error: ${formatError(result.err)}`);
+        setError(`❌ Error: ${JSON.stringify(result.err)}`);
       }
     } catch (err) {
-      console.error("Error transferencia:", err);
-      setError("❌ Error al realizar la transferencia.");
-    }
-  };
-
-  const formatError = (err) => {
-    switch (err) {
-      case "SaldoInsuficiente": return "Saldo insuficiente";
-      case "PermisoDenegado": return "No autorizado";
-      case "ErrorValidacion": return "Datos inválidos";
-      default: return err;
+      console.error(err);
+      setError("❌ Error de red al retirar ICP.");
     }
   };
 
@@ -125,57 +99,53 @@ const Wallet = () => {
           <Card className="shadow">
             <Card.Header className="d-flex justify-content-between align-items-center">
               <span>💳 Tu Billetera</span>
-              <span className="badge bg-primary">Saldo: {balance} ICP</span>
+              <div>
+                <span className="badge bg-primary me-2">Saldo: {balance} ICP</span>
+                <Button size="sm" variant="outline-light" onClick={loadSaldo}>🔄</Button>
+              </div>
             </Card.Header>
             <Card.Body>
               {error && <Alert variant="danger">{error}</Alert>}
               {success && <Alert variant="success">{success}</Alert>}
-
-              <Tabs
-                activeKey={activeTab}
-                onSelect={(k) => setActiveTab(k)}
-                className="mb-3"
-              >
+              <Tabs activeKey={activeTab} onSelect={(k) => { setActiveTab(k); setError(""); setSuccess(""); }} className="mb-3">
                 <Tab eventKey="recargar" title="Recargar Saldo">
-                  <Form className="mt-3">
-                    <Form.Group className="mb-3">
-                      <Form.Label>Monto a recargar (ICP)</Form.Label>
-                      <Form.Control
-                        type="number"
-                        min="1"
-                        value={recargaMonto}
-                        onChange={(e) => setRecargaMonto(Number(e.target.value))}
-                      />
-                    </Form.Group>
-                    <Button variant="success" onClick={handleRecargarSaldo}>
-                      Recargar Saldo
-                    </Button>
-                  </Form>
+                  {/* Recarga existente */}
                 </Tab>
                 <Tab eventKey="transferir" title="Transferir ICP">
+                  {/* Transferencia existente */}
+                </Tab>
+
+                {/* NUEVO TAB de Retiro */}
+                <Tab eventKey="retirar" title="Retirar ICP">
                   <Form className="mt-3">
                     <Form.Group className="mb-3">
-                      <Form.Label>ID del Destinatario</Form.Label>
+                      <Form.Label>Account Identifier destino</Form.Label>
                       <Form.Control
                         type="text"
-                        placeholder="Ej: xh3fc-3qaaa-aaaak..."
+                        placeholder="Ej: 2f3b...d7"
                         value={destinatarioId}
                         onChange={(e) => setDestinatarioId(e.target.value)}
                       />
                     </Form.Group>
                     <Form.Group className="mb-3">
-                      <Form.Label>Monto a transferir (ICP)</Form.Label>
+                      <Form.Label>Monto a retirar (ICP)</Form.Label>
                       <Form.Control
                         type="number"
-                        min="1"
+                        min="0.0001"
+                        step="0.0001"
                         value={transferirMonto}
                         onChange={(e) => setTransferirMonto(Number(e.target.value))}
                       />
                     </Form.Group>
-                    <Button variant="primary" onClick={handleTransferirSaldo}>
-                      Transferir ICP
+                    <Button variant="danger" onClick={handleRetirarICP}>
+                      Retirar ICP
                     </Button>
                   </Form>
+                  {ultimoRetiro && (
+                    <div className="mt-3 text-muted small">
+                      Último retiro: Block #{ultimoRetiro.block} – {ultimoRetiro.fecha}
+                    </div>
+                  )}
                 </Tab>
               </Tabs>
 

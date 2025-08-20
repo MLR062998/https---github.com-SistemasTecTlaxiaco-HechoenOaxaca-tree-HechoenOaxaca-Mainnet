@@ -6,19 +6,30 @@
       "type": "motoko",
       "main": "src/HechoenOaxaca-icp-backend/main.mo",
       "candid": "src/HechoenOaxaca-icp-backend/HechoenOaxaca-icp-backend.did",
-      "initial_cycles": 100000000000
+      "initial_cycles": 100000000000,
+      "dependencies": ["ledger"]
     },
     "HechoenOaxaca-icp-frontend": {
       "type": "assets",
       "dependencies": ["HechoenOaxaca-icp-backend"],
       "source": ["src/HechoenOaxaca-icp-frontend/dist"],
       "build": "npm run build"
+    },
+    "ledger": {
+      "type": "custom",
+      "candid": "ledger/ledger.did",
+      "wasm": "",
+      "remote": {
+        "id": {
+          "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai"
+        }
+      }
     }
   },
   "defaults": {
     "build": {
       "args": "",
-      "packtool": ""
+      "packtool": "mops sources"
     }
   },
   "networks": {
