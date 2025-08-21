@@ -41,6 +41,7 @@ actor class HechoenOaxacaBackend() = this {
     accountId : Blob;
   };
 
+  // ✅ Definición del producto con imágenes como [Text] (base64)
   public type Producto = {
     id : Text;
     nombre : Text;
@@ -48,7 +49,7 @@ actor class HechoenOaxacaBackend() = this {
     descripcion : Text;
     artesano : Principal;
     tipo : Text;
-    imagenes : [Blob];
+    imagenes : [Text];  // ✅ ahora son base64 strings
     fechaCreacion : Int;
     activo : Bool;
   };
@@ -181,31 +182,39 @@ actor class HechoenOaxacaBackend() = this {
   public shared ({ caller }) func crearProducto(
     nombre : Text,
     precio : Nat64,
-    descripcion : Text,
     tipo : Text,
-    imagenes : [[Nat8]]
+    descripcion : Text,
+    imagenes : [Text]   // ✅ base64 strings
   ) : async Result.Result<Producto, AplicationError> {
     try {
+      // Validación de usuario
       switch (usuarios.get(caller)) {
         case (?u) { if (u.rol != #Artesano) return #err(#PermisoDenegado) };
         case null return #err(#UsuarioNoExiste);
       };
 
+      // Validaciones de datos
       if (nombre.size() < 3) return #err(#ErrorValidacion("Nombre muy corto (mín 3 caracteres)"));
       if (precio == 0) return #err(#ErrorValidacion("Precio debe ser positivo"));
       if (descripcion.size() < 10) return #err(#ErrorValidacion("Descripción muy corta (mín 10 caracteres)"));
       if (imagenes.size() == 0 or imagenes.size() > 3) return #err(#ErrorValidacion("Debe haber entre 1-3 imágenes"));
 
+      // Generar ID único
       let id = await generateId("prod-");
-      let imagenesBlob = Array.map<[Nat8], Blob>(imagenes, func (img) = Blob.fromArray(img));
 
+      // Crear el producto
       let producto : Producto = {
-        id; nombre; precio; descripcion; tipo;
-        imagenes = imagenesBlob;
+        id;
+        nombre;
+        precio;
+        descripcion;
+        tipo;
+        imagenes;     // ✅ se guarda tal cual llega en base64
         artesano = caller;
         fechaCreacion = Time.now();
         activo = true;
       };
+
       productos.put(id, producto);
       logEvento("🆕 Producto " # id # " por " # Principal.toText(caller));
       #ok(producto)
@@ -214,6 +223,7 @@ actor class HechoenOaxacaBackend() = this {
       #err(#ErrorInterno("Error inesperado al crear producto"))
     }
   };
+
   // ========= LISTAR PRODUCTOS =========
   public shared query func listarProductos() : async [Producto] {
     Iter.toArray(productos.vals())
@@ -367,4 +377,4 @@ actor class HechoenOaxacaBackend() = this {
     transacciones := HashMap.fromIter<Text, Transaccion>(stableTransacciones.vals(), 0, Text.equal, Text.hash);
     logs := Buffer.fromArray(stableLogs);
   };
-}
+};

@@ -8,10 +8,20 @@ import "../cliente.scss";
 const CrearProducto = () => {
   const { actor } = useAuthContext();
   const [images, setImages] = useState([]);
+  const [previewImages, setPreviewImages] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState("");
-  const [previewImages, setPreviewImages] = useState([]);
   const navigate = useNavigate();
+
+  // 🔹 Convierte archivo a base64 (dataURL)
+  const convertToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result); // data:image/png;base64,...
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleImageChange = (e) => {
     const selected = Array.from(e.target.files);
@@ -32,10 +42,14 @@ const CrearProducto = () => {
       }
     }
 
-    const previews = selected.map(file => URL.createObjectURL(file));
-    setImages(selected);
-    setPreviewImages(previews);
-    setError("");
+    // ✅ Previews seguros con dataURL
+    Promise.all(selected.map(file => convertToBase64(file)))
+      .then((base64s) => {
+        setImages(base64s);      // guardamos base64 para enviar al backend
+        setPreviewImages(base64s); // usamos el mismo base64 para previews
+        setError("");
+      })
+      .catch(() => setError("Error al procesar imágenes."));
   };
 
   const handleSubmit = async (e) => {
@@ -51,13 +65,8 @@ const CrearProducto = () => {
       return;
     }
 
-    if (isNaN(precio)) {
-      setError("Ingresa un precio válido.");
-      return;
-    }
-
-    if (precio <= 0) {
-      setError("El precio debe ser mayor a cero.");
+    if (isNaN(precio) || precio <= 0) {
+      setError("Ingresa un precio válido mayor a 0.");
       return;
     }
 
@@ -75,25 +84,14 @@ const CrearProducto = () => {
     setLoading("Registrando producto...");
 
     try {
-      const imageBlobs = await Promise.all(
-        images.map(async (img) => {
-          const buffer = await img.arrayBuffer();
-          return Array.from(new Uint8Array(buffer));
-        })
-      );
-
-      for (const blob of imageBlobs) {
-        if (blob.length > 2_000_000) {
-          throw new Error("Una o más imágenes exceden el tamaño permitido");
-        }
-      }
+      const precioNat64 = BigInt(Math.floor(precio * 100_000_000)); // ✅ convertir a Nat64
 
       const result = await actor.crearProducto(
         nombre,
-        precio,
+        precioNat64,
         descripcion,
         tipo,
-        imageBlobs
+        images // ✅ enviamos base64 directamente
       );
 
       if ("ok" in result) {
@@ -134,7 +132,6 @@ const CrearProducto = () => {
                     name="nombre" 
                     placeholder="Ej. Blusa bordada a mano" 
                     required 
-                    className="form-control"
                   />
                 </Form.Group>
 
@@ -149,7 +146,6 @@ const CrearProducto = () => {
                       placeholder="Ej. 350.00" 
                       min="0"
                       required 
-                      className="form-control"
                     />
                   </div>
                 </Form.Group>
@@ -162,13 +158,12 @@ const CrearProducto = () => {
                     name="descripcion" 
                     placeholder="Describe tu producto con detalles como materiales, colores, medidas, etc."
                     required 
-                    className="form-control"
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-3 form-group">
                   <Form.Label>Tipo de producto *</Form.Label>
-                  <Form.Select name="tipo" required className="form-select">
+                  <Form.Select name="tipo" required>
                     <option value="">Selecciona una opción</option>
                     <option value="textil">Textil</option>
                     <option value="artesania">Artesanía</option>
@@ -184,33 +179,32 @@ const CrearProducto = () => {
                     multiple
                     onChange={handleImageChange}
                     required
-                    className="form-control"
                   />
-                  <Form.Text className="text-muted image-hint">
+                  <Form.Text className="text-muted">
                     Sube entre 1 y 3 imágenes (JPEG, PNG o WEBP). Máximo 2MB cada una.
                   </Form.Text>
 
                   {previewImages.length > 0 && (
-                    <div className="mt-3 d-flex flex-wrap gap-2 image-previews">
+                    <div className="mt-3 d-flex flex-wrap gap-2">
                       {previewImages.map((src, index) => (
                         <img
                           key={index}
                           src={src}
                           alt={`Vista previa ${index + 1}`}
                           className="img-thumbnail preview-image"
+                          style={{ maxWidth: "150px", maxHeight: "150px" }}
                         />
                       ))}
                     </div>
                   )}
                 </Form.Group>
 
-                <div className="d-grid gap-2 submit-button">
+                <div className="d-grid gap-2">
                   <Button 
                     variant="success" 
                     type="submit" 
                     size="lg"
-                    disabled={loading}
-                    className="submit-btn"
+                    disabled={!!loading}
                   >
                     {loading ? "Registrando..." : "Guardar producto"}
                   </Button>

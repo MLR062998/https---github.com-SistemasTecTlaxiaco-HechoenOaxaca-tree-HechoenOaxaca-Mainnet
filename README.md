@@ -1,90 +1,119 @@
-# `HechoenOaxaca-icp`
 
-Bienvenido a **HechoenOaxaca-icp**, un proyecto de plataforma marketplace desarrollado sobre **Internet Computer**. Este marketplace permite a los usuarios registrarse y participar en diferentes roles dentro de la plataforma, según sus intereses y objetivos:
+# `Hecho en Oaxaca`
 
-- **Productores Artesanos:** Creadores de productos artesanales que pueden vender sus productos en la plataforma.
-- **Socios Estratégicos:** Usuarios que apoyan la comercialización y distribución de los productos.
-- **Consumidores:** Personas interesadas en adquirir productos exclusivos hechos en Oaxaca.
+Bienvenido a **HechoenOaxaca-icp**, un marketplace descentralizado construido sobre **Internet Computer (ICP)**.  
+La plataforma conecta a **artesanos oaxaqueños** con consumidores globales, garantizando **transparencia, autenticidad y comercio justo** gracias a la tecnología blockchain.  
 
-El objetivo de este proyecto es facilitar la comercialización de productos artesanales oaxaqueños utilizando tecnologías descentralizadas para garantizar transparencia, seguridad y accesibilidad global.
+---
 
-## Requisitos Previos
-Para desarrollar y ejecutar este proyecto localmente, asegúrate de tener instalados los siguientes programas y herramientas:
+## 🚀 Funcionalidades principales
+- **Registro de usuarios** con distintos roles:  
+  - **Productores Artesanos**: Venden productos auténticos hechos en Oaxaca.  
+  - **Socios Estratégicos**: Apoyan en comercialización y distribución.  
+  - **Consumidores**: Compran productos exclusivos directamente de los artesanos.  
+- **Gestión de productos**: creación, edición, eliminación y visualización con soporte de imágenes.  
+- **Autenticación segura** con Internet Identity.  
+- **Pagos integrados** mediante **Ledger Canister** con ICP reales o de prueba.  
+- **Despliegue en Mainnet o Local Replica** para pruebas y producción.  
 
-### 1. Instalación de Dependencias Básicas
+---
 
-#### **Node.js y npm** (para gestionar paquetes y ejecutar el frontend)
-- Descarga e instala [Node.js](https://nodejs.org/), asegurándote de incluir `npm`.
-- Verifica la instalación ejecutando:
-  ```bash
-  node -v
-  npm -v
-  ```
+## 📦 Requisitos Previos
+Asegúrate de tener instalado:  
 
-#### **DFX SDK** (para desplegar canisters en Internet Computer)
-- Instala el SDK de Internet Computer con:
-  ```bash
-  sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
-  ```
-- Verifica la instalación con:
-  ```bash
-  dfx --version
-  ```
+- **Node.js y npm** → para ejecutar el frontend.  
+- **DFX SDK** → para compilar y desplegar canisters.  
+- **Ubuntu/WSL2 (en Windows)** → para entorno compatible.  
+- **Git** → para clonar y gestionar el repositorio.  
 
-#### **Ubuntu (WSL2, para Windows)**
-Si usas Windows, es recomendable instalar **WSL2 (Windows Subsystem for Linux)** y una distribución de Ubuntu para ejecutar `dfx` y otros comandos sin problemas.
-- Sigue la guía oficial de instalación de [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install).
+---
 
-## Estructura del Proyecto
-Al clonar este repositorio, encontrarás los siguientes archivos y carpetas principales:
-- **src/backend/** → Código del canister backend en Motoko.
-- **src/frontend/** → Código de la interfaz gráfica de usuario.
-- **dfx.json** → Configuración del proyecto en Internet Computer.
+## 🛠️ Instalación y Ejecución
 
-## Despliegue y Ejecución Local
-Si quieres probar el proyecto localmente, sigue estos pasos:
-
-### 1. Iniciar el Replica Local
+### 1. Clonar el repositorio
 ```bash
-cd HechoenOaxaca-icp/
+git clone https://github.com/tu-usuario/HechoenOaxaca-icp.git
+cd HechoenOaxaca-icp
+````
+
+### 2. Iniciar la réplica local
+
+```bash
 dfx start --background
 ```
-Este comando inicia el entorno local de Internet Computer.
 
-### 2. Desplegar los Canisters
+### 3. Desplegar los canisters
+
 ```bash
 dfx deploy
 ```
-Este proceso genera los canisters backend y frontend y proporciona los enlaces de acceso.
 
-- **Backend:** URL del servicio backend para procesar la lógica de negocio.
-- **Frontend:** Enlace donde se aloja la interfaz de usuario.
-- **Internet Identity:** Servicio de autenticación de Internet Computer.
+Esto desplegará:
 
-### 3. Iniciar el Servidor de Desarrollo (Frontend)
+* **Backend (Motoko)**
+* **Frontend (React)**
+* **Internet Identity**
+* **Ledger Canister** (para pruebas de transacciones en ICP)
+
+### 4. Iniciar el frontend
+
 ```bash
-npm install  # Instalar dependencias del frontend
+npm install
 npm run start
 ```
-Esto iniciará el servidor de desarrollo y la aplicación estará disponible en:
-- `http://localhost:3000` para la interfaz gráfica.
-- `http://localhost:8080` si usa un proxy para API.
 
-## Desarrollo y Modificaciones
-Si realizas cambios en el backend, genera una nueva interfaz Candid con:
+La aplicación estará disponible en:
+
+* `http://localhost:3000` → interfaz de usuario
+* `http://127.0.0.1:4943` → replica local de ICP
+
+---
+
+## 💳 Pagos con ICP (Ledger)
+
+Este proyecto integra el **Ledger Canister** para manejar pagos:
+
+* **Pagos de consumidores a artesanos** utilizando ICP.
+* **Transferencias seguras** gracias al ledger estándar de ICP.
+* Compatible con **Mainnet** y **Local replica** para pruebas.
+
+Ejemplo de despliegue del ledger local:
+
 ```bash
-npm run generate
+dfx ledger create-canister
+dfx ledger fabricate-cycles --amount 100T
 ```
-Esto garantiza la compatibilidad entre el backend y el frontend.
 
-## Documentación Adicional
-Si necesitas más información sobre el desarrollo en Internet Computer, revisa:
-- [Guía de Instalación](https://internetcomputer.org/docs/current/developer-docs/setup/install)
-- [Introducción a Motoko](https://internetcomputer.org/docs/current/motoko/main/motoko)
-- [Referencia Rápida de Motoko](https://internetcomputer.org/docs/current/motoko/main/language-manual)
+---
 
-## Contribuciones y Contacto
-Si deseas contribuir o tienes dudas sobre el proyecto, puedes abrir un issue en este repositorio o contactar al equipo de desarrollo.
+## 📂 Estructura del Proyecto
 
-¡Bienvenido a **HechoenOaxaca-icp**! 🚀
+* `src/backend/` → Lógica de negocio en **Motoko**.
+* `src/frontend/` → Interfaz en **React + JavaScript/TypeScript**.
+* `dfx.json` → Configuración del proyecto y canisters.
+
+---
+
+## 👩‍💻 Desarrollo y Contribución
+
+* Modifica el backend y genera nuevas interfaces Candid con:
+
+  ```bash
+  npm run generate
+  ```
+* Para contribuir:
+
+  1. Haz un fork del repositorio.
+  2. Crea una rama (`feature/nueva-funcionalidad`).
+  3. Haz un Pull Request con la mejora.
+
+---
+
+## 📚 Recursos
+
+* [Internet Computer Docs](https://internetcomputer.org/docs/current/developer-docs/setup/install)
+* [Motoko Language Guide](https://internetcomputer.org/docs/current/motoko/main/motoko)
+* [Ledger Canister Reference](https://internetcomputer.org/docs/current/references/ledger)
+
+
 
