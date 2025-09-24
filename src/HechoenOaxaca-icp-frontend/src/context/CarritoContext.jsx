@@ -12,7 +12,14 @@ export const CarritoProvider = ({ children }) => {
     const saved = localStorage.getItem("carrito");
     if (saved) {
       try {
-        setCarrito(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        // ✅ CORREGIDO: Convertir strings de BigInt de vuelta a números
+        const carritoProcesado = parsed.map(item => ({
+          ...item,
+          // Si precio era un BigInt guardado como string, convertirlo a número ICP
+          precioICP: item.precioICP || (item.precio ? Number(item.precio) / 100_000_000 : 0)
+        }));
+        setCarrito(carritoProcesado);
       } catch {
         console.warn("❌ Carrito en localStorage corrupto");
         localStorage.removeItem("carrito");
@@ -21,8 +28,13 @@ export const CarritoProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    const replacer = (key, value) =>
-      typeof value === "bigint" ? value.toString() : value;
+    const replacer = (key, value) => {
+      // ✅ CORREGIDO: Manejar correctamente BigInt y otros tipos
+      if (typeof value === "bigint") {
+        return value.toString();
+      }
+      return value;
+    };
 
     try {
       const json = JSON.stringify(carrito, replacer);
@@ -34,8 +46,19 @@ export const CarritoProvider = ({ children }) => {
 
   const agregarAlCarrito = (producto) => {
     setCarrito((prev) => {
-      if (prev.some((item) => item.id === producto.id)) return prev;
-      return [...prev, producto];
+      // Evitar duplicados
+      if (prev.some((item) => item.id === producto.id)) {
+        console.warn("Producto ya está en el carrito");
+        return prev;
+      }
+      
+      // ✅ CORREGIDO: Asegurar que el producto tenga precioICP
+      const productoConPrecioICP = {
+        ...producto,
+        precioICP: producto.precioICP || (Number(producto.precio || 0) / 100_000_000)
+      };
+      
+      return [...prev, productoConPrecioICP];
     });
   };
 
@@ -48,9 +71,55 @@ export const CarritoProvider = ({ children }) => {
     localStorage.removeItem("carrito");
   };
 
+  // ✅ CORREGIDO: Calcular total correctamente sin mezclar BigInt
   const total = useMemo(() => {
-    return carrito.reduce((sum, item) => sum + (item.precio || 0), 0);
+    if (!carrito || carrito.length === 0) return 0;
+    
+    return carrito.reduce((sum, item) => {
+      // Usar precioICP si existe (ya está en formato número ICP)
+      if (item.precioICP !== undefined && item.precioICP !== null) {
+        return sum + Number(item.precioICP);
+      }
+      
+      // Si no tiene precioICP, convertir precio a número ICP
+      let precioNumerico = 0;
+      try {
+        if (typeof item.precio === 'bigint') {
+          precioNumerico = Number(item.precio) / 100_000_000;
+        } else if (typeof item.precio === 'string') {
+          // Si fue guardado como string desde BigInt
+          precioNumerico = Number(item.precio) / 100_000_000;
+        } else {
+          precioNumerico = Number(item.precio || 0) / 100_000_000;
+        }
+      } catch (error) {
+        console.error("Error convirtiendo precio:", error, item);
+        precioNumerico = 0;
+      }
+      
+      return sum + precioNumerico;
+    }, 0);
   }, [carrito]);
+
+  // ✅ Función adicional para obtener el total en e8s (para el backend)
+  const totalE8s = useMemo(() => {
+    return BigInt(Math.floor(total * 100_000_000));
+  }, [total]);
+
+  // ✅ Función para obtener resumen del carrito
+  const resumenCarrito = useMemo(() => {
+    return {
+      totalItems: carrito.length,
+      totalICP: total,
+      totalE8s: totalE8s.toString(),
+      productos: carrito.map(item => ({
+        id: item.id,
+        nombre: item.nombre,
+        precioICP: item.precioICP || (Number(item.precio || 0) / 100_000_000),
+        cantidad: 1 // Por ahora cada producto es único
+      }))
+    };
+  }, [carrito, total, totalE8s]);
 
   return (
     <CarritoContext.Provider
@@ -60,7 +129,9 @@ export const CarritoProvider = ({ children }) => {
         agregarAlCarrito,
         eliminarDelCarrito,
         vaciarCarrito,
-        total,
+        total,           // Total en ICP (número)
+        totalE8s,        // Total en e8s (BigInt) para el backend
+        resumenCarrito,  // Resumen completo
       }}
     >
       {children}
