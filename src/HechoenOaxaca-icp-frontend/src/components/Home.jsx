@@ -1,4 +1,3 @@
-// src/components/Home.jsx
 import React, { useEffect, useState } from "react";
 import { useAuthContext } from "./authContext";
 import { useNavigate } from "react-router-dom";
@@ -6,18 +5,9 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Compra from "./Compra";
+import { processProductsList } from "../utils/imageUtils";
 import "../index.scss";
 import "bootstrap/dist/css/bootstrap.min.css";
-
-const blobToBase64 = (blobArray) => {
-  const uint8 = new Uint8Array(blobArray);
-  const blob = new Blob([uint8], { type: "image/jpeg" });
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.readAsDataURL(blob);
-  });
-};
 
 const Home = () => {
   const { actor } = useAuthContext();
@@ -28,25 +18,15 @@ const Home = () => {
   const navigate = useNavigate();
 
   const fetchProducts = async () => {
-    if (!actor?.listarProductosActivos) return;
+    if (!actor?.listarProductos) return;
 
     setLoading(true);
     try {
-      const result = await actor.listarProductosActivos();
-      if (!Array.isArray(result)) throw new Error("listarProductosActivos no devolvió una lista");
+      const result = await actor.listarProductos();
+      if (!Array.isArray(result)) throw new Error("listarProductos no devolvió una lista");
 
-      const productosProcesados = await Promise.all(
-        result.map(async (producto) => {
-          const imagenBase64 = producto.imagenes[0]
-            ? await blobToBase64(producto.imagenes[0])
-            : null;
-          return {
-            ...producto,
-            imgUrl: imagenBase64,
-          };
-        })
-      );
-
+      // ✅ CORREGIDO: Procesar imágenes correctamente
+      const productosProcesados = processProductsList(result);
       setProducts(productosProcesados);
     } catch (err) {
       console.error("❌ Error al cargar productos:", err);
@@ -62,11 +42,6 @@ const Home = () => {
   const handleShowDetails = (product) => {
     setSelectedProduct(product);
     setShowModal(true);
-  };
-
-  const handlePurchase = (product) => {
-    setShowModal(false);
-    navigate("/compra", { state: { product } });
   };
 
   return (
@@ -85,24 +60,43 @@ const Home = () => {
           <div className="row">
             {products.map((product) => (
               <div key={product.id} className="col-md-4 mb-4">
-                <Card>
-                  {product.imgUrl ? (
+                <Card className="h-100">
+                  {/* ✅ CORREGIDO: Mostrar primera imagen correctamente */}
+                  {product.imagenes && product.imagenes[0] ? (
                     <Card.Img
                       variant="top"
-                      src={product.imgUrl}
+                      src={product.imagenes[0]}
                       alt={`Imagen de ${product.nombre}`}
-                      style={{ maxHeight: "200px", objectFit: "cover" }}
+                      style={{ 
+                        height: "200px", 
+                        objectFit: "cover",
+                        width: "100%"
+                      }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
                     />
                   ) : (
-                    <div className="bg-light" style={{ height: "200px" }}>
+                    <div className="bg-light d-flex align-items-center justify-content-center" 
+                         style={{ height: "200px" }}>
                       <span className="text-muted">Sin imagen</span>
                     </div>
                   )}
-                  <Card.Body>
+                  
+                  <Card.Body className="d-flex flex-column">
                     <Card.Title>{product.nombre}</Card.Title>
-                    <Card.Text>{product.descripcion}</Card.Text>
-                    <Card.Text>Precio: ICP {product.precio}</Card.Text>
-                    <Button variant="primary" onClick={() => handleShowDetails(product)}>
+                    <Card.Text className="flex-grow-1">
+                      {product.descripcion.length > 100 
+                        ? `${product.descripcion.substring(0, 100)}...` 
+                        : product.descripcion}
+                    </Card.Text>
+                    <Card.Text className="fw-bold">Precio: ICP {product.precioICP?.toFixed(2)}</Card.Text>
+                    <Button 
+                      variant="primary" 
+                      onClick={() => handleShowDetails(product)}
+                      className="mt-auto"
+                    >
                       Ver Detalles
                     </Button>
                   </Card.Body>
@@ -117,7 +111,6 @@ const Home = () => {
         show={showModal}
         onClose={() => setShowModal(false)}
         product={selectedProduct}
-        onPurchase={handlePurchase}
       />
     </section>
   );

@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 import { useAuthContext } from "./authContext";
-import ModalProviderSelect from "./ModalProviderSelect";
 import "../index.scss";
 
 const Menu = () => {
@@ -12,7 +11,7 @@ const Menu = () => {
     isAuthenticated,
     principalId,
     isLoading,
-    openProviderModal,
+    connect, // ✅ Ahora usamos connect en lugar de openProviderModal
     logout,
   } = useAuthContext();
 
@@ -38,16 +37,16 @@ const Menu = () => {
             {!isAuthenticated ? (
               <button
                 className="custom-button login-button"
-                onClick={openProviderModal}
+                onClick={connect} // ✅ Cambiado de openProviderModal a connect
                 disabled={isLoading}
               >
-                {isLoading ? "Conectando..." : "Iniciar Sesión"}
+                {isLoading ? "Conectando..." : "Iniciar Sesión con NFID"} {/* ✅ Texto actualizado */}
               </button>
             ) : (
               <>
-                {rol === "cliente" && <Link to="/cliente-dashboard">Dashboard Cliente</Link>}
-                {rol === "artesano" && <Link to="/artesano-dashboard">Dashboard Artesano</Link>}
-                {rol === "intermediario" && <Link to="/intermediario-dashboard">Dashboard Intermediario</Link>}
+                {rol === "Cliente" && <Link to="/cliente-dashboard">Dashboard Cliente</Link>}
+                {rol === "Artesano" && <Link to="/artesano-dashboard">Dashboard Artesano</Link>}
+                {rol === "Intermediario" && <Link to="/intermediario-dashboard">Dashboard Intermediario</Link>}
                 <button
                   className="custom-button logout-button"
                   onClick={() => setShowLogoutModal(true)}
@@ -70,8 +69,6 @@ const Menu = () => {
           <Button variant="danger" onClick={handleLogout}>Salir</Button>
         </Modal.Footer>
       </Modal>
-
-      <ModalProviderSelect />
     </div>
   );
 };

@@ -13,7 +13,6 @@ import {
   idlFactory,
   canisterId as backendCanisterId,
 } from "declarations/HechoenOaxaca-icp-backend";
-import ModalProviderSelect from "../components/ModalProviderSelect";
 
 const AuthContext = createContext(null);
 
@@ -26,6 +25,12 @@ const AUTH_STATES = {
   ERROR: "error"
 };
 
+// Principales anónimos conocidos
+const ANONYMOUS_PRINCIPALS = new Set([
+  "2vxsx-fae",
+  "2vxsx-fae-cai"
+]);
+
 export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
   const [authClient, setAuthClient] = useState(null);
@@ -36,19 +41,24 @@ export const AuthProvider = ({ children }) => {
     status: AUTH_STATES.INITIALIZING,
     error: null,
   });
-  const [showProviderModal, setShowProviderModal] = useState(false);
 
-  const isLocal = import.meta.env.VITE_DFX_NETWORK === "local";
-  const host = isLocal ? "http://127.0.0.1:4943" : "https://icp-api.io";
-  const identityProvider = isLocal
-    ? `http://${import.meta.env.VITE_II_CANISTER_ID}.localhost:4943`
-    : "https://nfid.one/authenticate?applicationName=HechoEnOaxaca";
+  // ✅ CONFIGURACIÓN SOLO NFID PARA MAINNET
+  const host = "https://icp-api.io";
+  const identityProvider = "https://nfid.one/authenticate?applicationName=HechoEnOaxaca";
 
-  // Configuración del actor con manejo de errores
+  // ✅ Función para detectar si es principal anónimo (ESTABLE)
+  const isAnonymousPrincipal = useCallback((principal) => {
+    if (!principal) return true;
+    const principalText = principal.toString();
+    return principal.isAnonymous() || 
+           ANONYMOUS_PRINCIPALS.has(principalText) ||
+           principalText.endsWith("-cai");
+  }, []);
+
+  // Configuración del actor (ESTABLE)
   const setupActor = useCallback(async (id) => {
     try {
       const agent = new HttpAgent({ identity: id, host });
-      if (isLocal) await agent.fetchRootKey();
       return Actor.createActor(idlFactory, {
         agent,
         canisterId: backendCanisterId,
@@ -57,18 +67,22 @@ export const AuthProvider = ({ children }) => {
       console.error("Error setting up actor:", error);
       throw error;
     }
-  }, [host, isLocal]);
+  }, [host]);
 
-  // Redirección de usuario con verificación robusta
-  const handleUserRedirect = useCallback(async (act) => {
+  // ✅ Redirección de usuario - MOVIDA FUERA para evitar recreación constante
+  const handleUserRedirect = useCallback(async (act, principal) => {
     try {
+      if (isAnonymousPrincipal(principal)) {
+        setAuthState({ status: AUTH_STATES.ANONYMOUS, error: null });
+        return;
+      }
+
       if (!act || typeof act.obtenerUsuario !== 'function') {
         throw new Error("Actor no tiene método obtenerUsuario");
       }
 
       const res = await act.obtenerUsuario();
-      console.log("User data response:", res);
-
+      
       if ("ok" in res) {
         const rol = Object.keys(res.ok.rol)[0];
         localStorage.setItem("rol", rol);
@@ -80,11 +94,20 @@ export const AuthProvider = ({ children }) => {
           Intermediario: "/intermediario-dashboard"
         };
         
-        navigate(routeMap[rol] || "/registro", { replace: true });
+        const targetRoute = routeMap[rol] || "/registro";
+        
+        // ✅ Solo navegar si no estamos ya en la ruta correcta
+        if (window.location.pathname !== targetRoute) {
+          navigate(targetRoute);
+        }
       } else {
         localStorage.removeItem("rol");
         setAuthState({ status: AUTH_STATES.ANONYMOUS, error: null });
-        navigate("/registro", { replace: true });
+        
+        // ✅ Solo navegar si no estamos ya en registro
+        if (window.location.pathname !== "/registro") {
+          navigate("/registro");
+        }
       }
     } catch (err) {
       console.error("Error en handleUserRedirect:", err);
@@ -92,9 +115,12 @@ export const AuthProvider = ({ children }) => {
         status: AUTH_STATES.ERROR, 
         error: err.message || "Error al verificar usuario" 
       });
-      navigate("/", { replace: true });
+      
+      if (window.location.pathname !== "/") {
+        navigate("/");
+      }
     }
-  }, [navigate]);
+  }, [isAnonymousPrincipal]); // ✅ REMOVIDA 'navigate' de las dependencias
 
   // Inicialización del cliente de autenticación
   useEffect(() => {
@@ -107,17 +133,20 @@ export const AuthProvider = ({ children }) => {
 
         setAuthClient(client);
         const id = client.getIdentity();
+        const principal = id.getPrincipal();
+        
         setIdentity(id);
         
-        const isAuth = !id.getPrincipal().isAnonymous();
         const act = await setupActor(id);
 
         if (!isMounted) return;
         
         setActor(act);
         
+        const isAuth = !isAnonymousPrincipal(principal);
+        
         if (isAuth) {
-          await handleUserRedirect(act);
+          await handleUserRedirect(act, principal);
         } else {
           setAuthState({ status: AUTH_STATES.ANONYMOUS, error: null });
         }
@@ -126,7 +155,7 @@ export const AuthProvider = ({ children }) => {
         if (isMounted) {
           setAuthState({ 
             status: AUTH_STATES.ERROR, 
-            error: err.message || "Error de inicialización" 
+            error: "Error de conexión con Internet Computer" 
           });
         }
       } finally {
@@ -139,9 +168,9 @@ export const AuthProvider = ({ children }) => {
     return () => {
       isMounted = false;
     };
-  }, [setupActor, handleUserRedirect]);
+  }, [setupActor, isAnonymousPrincipal]); // ✅ REMOVIDA handleUserRedirect de las dependencias
 
-  // Función de login mejorada
+  // ✅ Función de login SOLO con NFID
   const login = useCallback(async () => {
     if (!authClient) return;
     
@@ -149,58 +178,61 @@ export const AuthProvider = ({ children }) => {
 
     try {
       await authClient.login({
-        identityProvider,
+        identityProvider, // ✅ Solo NFID
         onSuccess: async () => {
           const id = authClient.getIdentity();
+          const principal = id.getPrincipal();
           setIdentity(id);
           
           const act = await setupActor(id);
           setActor(act);
-          await handleUserRedirect(act);
+          await handleUserRedirect(act, principal);
         },
         onError: (err) => {
-          console.error("Error en login:", err);
+          console.error("Error en login NFID:", err);
           setAuthState({ 
             status: AUTH_STATES.ERROR, 
-            error: err.message || "Error durante el login" 
+            error: "Error durante la autenticación con NFID" 
           });
         },
         windowOpenerFeatures: `width=500,height=600,left=${window.screen.width/2 - 250},top=${window.screen.height/2 - 300}`
       });
     } catch (err) {
-      console.error("Login fallido:", err);
+      console.error("Login NFID fallido:", err);
       setAuthState({ 
         status: AUTH_STATES.ERROR, 
-        error: err.message || "Error al iniciar sesión" 
+        error: "Error al iniciar sesión con NFID" 
       });
     }
   }, [authClient, identityProvider, setupActor, handleUserRedirect]);
 
-  // Función de logout robusta
+  // Función de logout
   const logout = useCallback(async () => {
     try {
       if (authClient) {
         await authClient.logout();
       }
       
-      localStorage.clear();
+      localStorage.removeItem("rol");
       setIdentity(new AnonymousIdentity());
       setActor(null);
       setAuthState({ status: AUTH_STATES.ANONYMOUS, error: null });
-      navigate("/", { replace: true });
+      
+      // ✅ Usar window.location en lugar de navigate para evitar dependencias
+      window.location.href = "/";
     } catch (err) {
       console.error("Error en logout:", err);
       setAuthState({
         status: AUTH_STATES.ERROR,
-        error: err.message || "Error al cerrar sesión"
+        error: "Error al cerrar sesión"
       });
     }
-  }, [authClient, navigate]);
+  }, [authClient]); // ✅ REMOVIDA 'navigate' de las dependencias
 
-  // Conexión simplificada para componentes
+  // ✅ Conexión directa a NFID (sin modal de selección)
   const connect = useCallback(() => {
-    setShowProviderModal(true);
-  }, []);
+    login();
+  }, [login]);
 
   // Valores derivados
   const principalId = useMemo(
@@ -223,7 +255,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     connect,
-    openProviderModal: () => setShowProviderModal(true),
+    isAnonymous: authState.status === AUTH_STATES.ANONYMOUS
   }), [
     isAuthenticated,
     principalId,
@@ -238,19 +270,6 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={value}>
       {children}
-      {showProviderModal && (
-        <ModalProviderSelect
-          isOpen={showProviderModal}
-          onClose={() => setShowProviderModal(false)}
-          onSelectProvider={(provider) => {
-            localStorage.setItem("identityProvider", provider);
-            setShowProviderModal(false);
-            login();
-          }}
-          internetIdentityUrl="https://identity.ic0.app"
-          nfidUrl="https://nfid.one/authenticate"
-        />
-      )}
     </AuthContext.Provider>
   );
 };

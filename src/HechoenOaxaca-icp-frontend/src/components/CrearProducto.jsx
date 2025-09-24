@@ -13,11 +13,10 @@ const CrearProducto = () => {
   const [loading, setLoading] = useState("");
   const navigate = useNavigate();
 
-  // 🔹 Convierte archivo a base64 (dataURL)
   const convertToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result); // data:image/png;base64,...
+      reader.onload = () => resolve(reader.result);
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
@@ -42,11 +41,17 @@ const CrearProducto = () => {
       }
     }
 
-    // ✅ Previews seguros con dataURL
+    // ✅ CORREGIDO: Quitar el prefijo data:image/... del base64
     Promise.all(selected.map(file => convertToBase64(file)))
       .then((base64s) => {
-        setImages(base64s);      // guardamos base64 para enviar al backend
-        setPreviewImages(base64s); // usamos el mismo base64 para previews
+        // Extraer solo el base64 puro (sin "data:image/...;base64,")
+        const pureBase64s = base64s.map(b64 => {
+          const parts = b64.split(',');
+          return parts.length > 1 ? parts[1] : b64;
+        });
+        
+        setImages(pureBase64s);      // Base64 puro para el backend
+        setPreviewImages(base64s);   // DataURL completo para preview
         setError("");
       })
       .catch(() => setError("Error al procesar imágenes."));
@@ -84,14 +89,15 @@ const CrearProducto = () => {
     setLoading("Registrando producto...");
 
     try {
-      const precioNat64 = BigInt(Math.floor(precio * 100_000_000)); // ✅ convertir a Nat64
+      const precioNat64 = BigInt(Math.floor(precio * 100_000_000));
 
+      // ✅ CORREGIDO: Orden correcto de parámetros
       const result = await actor.crearProducto(
-        nombre,
-        precioNat64,
-        descripcion,
-        tipo,
-        images // ✅ enviamos base64 directamente
+        nombre,        // text
+        precioNat64,   // nat64  
+        tipo,          // text (¡Este estaba en orden incorrecto!)
+        descripcion,   // text
+        images         // vec text
       );
 
       if ("ok" in result) {
@@ -102,7 +108,9 @@ const CrearProducto = () => {
         setPreviewImages([]);
         navigate(`/producto/${producto.id}`);
       } else {
-        setError(`Error: ${JSON.stringify(result.err)}`);
+        // ✅ Mejor manejo de errores
+        const errorMsg = handleError(result.err);
+        setError(`Error: ${errorMsg}`);
       }
     } catch (err) {
       console.error("Error al crear producto:", err);
@@ -110,6 +118,14 @@ const CrearProducto = () => {
     } finally {
       setLoading("");
     }
+  };
+
+  // ✅ Función para manejar errores del backend
+  const handleError = (error) => {
+    if (typeof error === 'object' && 'ErrorValidacion' in error) {
+      return error.ErrorValidacion;
+    }
+    return JSON.stringify(error);
   };
 
   return (
@@ -154,9 +170,9 @@ const CrearProducto = () => {
                   <Form.Label>Descripción *</Form.Label>
                   <Form.Control 
                     as="textarea" 
-                    rows={3} 
+                    rows={4}  // ✅ Más espacio para descripciones largas
                     name="descripcion" 
-                    placeholder="Describe tu producto con detalles como materiales, colores, medidas, etc."
+                    placeholder="Describe tu producto con detalles como materiales, colores, medidas, etc. Mínimo 10 caracteres."
                     required 
                   />
                 </Form.Group>
@@ -165,9 +181,12 @@ const CrearProducto = () => {
                   <Form.Label>Tipo de producto *</Form.Label>
                   <Form.Select name="tipo" required>
                     <option value="">Selecciona una opción</option>
-                    <option value="textil">Textil</option>
-                    <option value="artesania">Artesanía</option>
-                    <option value="dulces">Dulces tradicionales</option>
+                    <option value="Textil">Textil</option>
+                    <option value="Artesania">Artesanía</option>
+                    <option value="Dulces">Dulces tradicionales</option>
+                    <option value="Barro">Barro y cerámica</option>
+                    <option value="Madera">Madera</option>
+                    <option value="Metal">Metal</option>
                   </Form.Select>
                 </Form.Group>
 

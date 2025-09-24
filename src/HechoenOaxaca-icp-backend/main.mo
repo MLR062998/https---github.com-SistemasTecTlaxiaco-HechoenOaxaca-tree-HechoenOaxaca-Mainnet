@@ -17,13 +17,13 @@ import Buffer "mo:base/Buffer";
 import Error "mo:base/Error";
 
 import AID "mo:principal/AccountIdentifier";
-import Ledger "./Ledger";
+import Ledger "./Ledger";  // ✅ MANTENEMOS Ledger
 
 actor class HechoenOaxacaBackend() = this {
 
   // ========= CONFIGURACIÓN =========
-  let TRANSFER_FEE : Nat64 = 10_000;            // 0.0001 ICP en e8s
-  let ALLOW_MULTI_ARTESANOS : Bool = true;      // true => varios artesanos por compra
+  let TRANSFER_FEE : Nat64 = 10_000;
+  let ALLOW_MULTI_ARTESANOS : Bool = true;
 
   // Conexión al Ledger ICP oficial
   let ledger = actor("ryjl3-tyaaa-aaaaa-aaaba-cai") : Ledger.Self;
@@ -41,15 +41,14 @@ actor class HechoenOaxacaBackend() = this {
     accountId : Blob;
   };
 
-  // ✅ Definición del producto con imágenes como [Text] (base64)
   public type Producto = {
     id : Text;
     nombre : Text;
-    precio : Nat64; // e8s
+    precio : Nat64;
     descripcion : Text;
     artesano : Principal;
     tipo : Text;
-    imagenes : [Text];  // ✅ ahora son base64 strings
+    imagenes : [Text];
     fechaCreacion : Int;
     activo : Bool;
   };
@@ -98,16 +97,8 @@ actor class HechoenOaxacaBackend() = this {
     Nat64.toNat(n64)
   };
 
-  private func safeNatToNat64(n : Nat) : ?Nat64 {
-    if (n <= 0xFFFFFFFFFFFFFFFF) {
-      ?Nat64.fromNat(n);
-    } else {
-      null;
-    }
-  };
-
-  // Para incrementar valores en HashMaps de Nat64
-  private func incrementNat64(map: HashMap.HashMap<Principal, Nat64>, key: Principal, value: Nat64) {
+  // ✅ CORREGIDO: Función incrementNat64 con tipo de retorno explícito
+  private func incrementNat64(map : HashMap.HashMap<Principal, Nat64>, key : Principal, value : Nat64) : () {
     let current = Option.get(map.get(key), 0:Nat64);
     map.put(key, current + value);
   };
@@ -184,32 +175,29 @@ actor class HechoenOaxacaBackend() = this {
     precio : Nat64,
     tipo : Text,
     descripcion : Text,
-    imagenes : [Text]   // ✅ base64 strings
+    imagenes : [Text]
   ) : async Result.Result<Producto, AplicationError> {
     try {
-      // Validación de usuario
       switch (usuarios.get(caller)) {
         case (?u) { if (u.rol != #Artesano) return #err(#PermisoDenegado) };
         case null return #err(#UsuarioNoExiste);
       };
 
-      // Validaciones de datos
-      if (nombre.size() < 3) return #err(#ErrorValidacion("Nombre muy corto (mín 3 caracteres)"));
+      // ✅ CORREGIDO: Usar Text.toIter().size() para contar caracteres Unicode (acentos)
+      if (Iter.size(Text.toIter(nombre)) < 3) return #err(#ErrorValidacion("Nombre muy corto (mín 3 caracteres)"));
       if (precio == 0) return #err(#ErrorValidacion("Precio debe ser positivo"));
-      if (descripcion.size() < 10) return #err(#ErrorValidacion("Descripción muy corta (mín 10 caracteres)"));
+      if (Iter.size(Text.toIter(descripcion)) < 10) return #err(#ErrorValidacion("Descripción muy corta (mín 10 caracteres)"));
       if (imagenes.size() == 0 or imagenes.size() > 3) return #err(#ErrorValidacion("Debe haber entre 1-3 imágenes"));
 
-      // Generar ID único
       let id = await generateId("prod-");
 
-      // Crear el producto
       let producto : Producto = {
         id;
         nombre;
         precio;
         descripcion;
         tipo;
-        imagenes;     // ✅ se guarda tal cual llega en base64
+        imagenes;
         artesano = caller;
         fechaCreacion = Time.now();
         activo = true;
@@ -224,15 +212,115 @@ actor class HechoenOaxacaBackend() = this {
     }
   };
 
+  // ========= ACTUALIZAR PRODUCTO =========
+  public shared ({ caller }) func actualizarProducto(
+    id : Text,
+    nombre : Text,
+    precio : Nat64, 
+    descripcion : Text,
+    tipo : Text,
+    imagenes : [Text]
+  ) : async Result.Result<Producto, AplicationError> {
+    try {
+      switch (productos.get(id)) {
+        case (?productoExistente) {
+          if (productoExistente.artesano != caller) {
+            return #err(#PermisoDenegado);
+          };
+          
+          // ✅ CORREGIDO: Usar Text.toIter().size() para contar caracteres Unicode (acentos)
+          if (Iter.size(Text.toIter(nombre)) < 3) return #err(#ErrorValidacion("Nombre muy corto (mín 3 caracteres)"));
+          if (precio == 0) return #err(#ErrorValidacion("Precio debe ser positivo"));
+          if (Iter.size(Text.toIter(descripcion)) < 10) return #err(#ErrorValidacion("Descripción muy corta (mín 10 caracteres)"));
+          if (imagenes.size() == 0 or imagenes.size() > 3) return #err(#ErrorValidacion("Debe haber entre 1-3 imágenes"));
+
+          let productoActualizado : Producto = {
+            id = id;
+            nombre = nombre;
+            precio = precio;
+            descripcion = descripcion;
+            tipo = tipo;
+            imagenes = imagenes;
+            artesano = caller;
+            fechaCreacion = productoExistente.fechaCreacion;
+            activo = productoExistente.activo;
+          };
+
+          productos.put(id, productoActualizado);
+          logEvento("✏️ Producto actualizado: " # id # " por " # Principal.toText(caller));
+          #ok(productoActualizado)
+        };
+        case null return #err(#ProductoNoExiste);
+      }
+    } catch (e) {
+      logEvento("❌ actualizarProducto: " # Error.message(e));
+      #err(#ErrorInterno("Error inesperado al actualizar producto"))
+    }
+  };
+
+  // ========= ELIMINAR PRODUCTO =========
+  public shared ({ caller }) func eliminarProducto(id : Text) : async Result.Result<(), AplicationError> {
+    try {
+      switch (productos.get(id)) {
+        case (?producto) {
+          if (producto.artesano != caller) {
+            return #err(#PermisoDenegado);
+          };
+
+          let productoDesactivado : Producto = {
+            id = producto.id;
+            nombre = producto.nombre;
+            precio = producto.precio;
+            descripcion = producto.descripcion;
+            tipo = producto.tipo;
+            imagenes = producto.imagenes;
+            artesano = producto.artesano;
+            fechaCreacion = producto.fechaCreacion;
+            activo = false;
+          };
+
+          productos.put(id, productoDesactivado);
+          logEvento("🗑️ Producto eliminado/desactivado: " # id # " por " # Principal.toText(caller));
+          #ok(())
+        };
+        case null return #err(#ProductoNoExiste);
+      }
+    } catch (e) {
+      logEvento("❌ eliminarProducto: " # Error.message(e));
+      #err(#ErrorInterno("Error inesperado al eliminar producto"))
+    }
+  };
+
   // ========= LISTAR PRODUCTOS =========
   public shared query func listarProductos() : async [Producto] {
     Iter.toArray(productos.vals())
   };
 
+  // ========= LISTAR PRODUCTOS POR ARTESANO =========
+  public shared query ({ caller }) func listarProductosPorArtesano() : async [Producto] {
+    switch (usuarios.get(caller)) {
+      case (?usuario) {
+        if (usuario.rol != #Artesano) {
+          return [];
+        }
+      };
+      case null return [];
+    };
+
+    let productosArtesano = Buffer.Buffer<Producto>(0);
+    
+    for (producto in productos.vals()) {
+      if (producto.artesano == caller and producto.activo) {
+        productosArtesano.add(producto);
+      }
+    };
+    
+    Buffer.toArray(productosArtesano)
+  };
+
   // ========= COMPRAS / PAGOS =========
   public shared ({ caller }) func realizarCompra(productoIds : [Text]) : async Result.Result<(), AplicationError> {
     try {
-      // Validaciones de usuario y carrito
       switch (usuarios.get(caller)) {
         case null return #err(#UsuarioNoExiste);
         case (?u) {
@@ -318,42 +406,6 @@ actor class HechoenOaxacaBackend() = this {
     }
   };
 
-  public shared ({ caller }) func retirarICP(destinoBytes : [Nat8], monto : Nat64)
-    : async Result.Result<Nat64, AplicationError> {
-    switch (usuarios.get(caller)) {
-      case null return #err(#UsuarioNoExiste);
-      case (?_) {
-        if (monto < TRANSFER_FEE) return #err(#ErrorValidacion("Monto debe ser >= fee"));
-
-        let res = await ledger.transfer({
-          memo = 0;
-          amount = { e8s = nat64ToNat(monto) };
-          fee = { e8s = nat64ToNat(TRANSFER_FEE) };
-          from_subaccount = null;
-          to = Blob.fromArray(destinoBytes);
-          created_at_time = null;
-        });
-
-        switch (res) {
-          case (#Ok(blockHeight)) {
-            let blockHeight64 = natToNat64(blockHeight);
-            logEvento("💰 Retiro ICP block=" # Nat64.toText(blockHeight64));
-            #ok(blockHeight64)
-          };
-          case (#Err(#BadFee { expected_fee })) {
-            #err(#ErrorLedger({ codigo = "BAD_FEE"; mensaje = "Fee esperado: " # Nat64.toText(natToNat64(expected_fee.e8s)) }))
-          };
-          case (#Err(#InsufficientFunds { balance })) {
-            #err(#ErrorLedger({ codigo = "INSUFFICIENT_FUNDS"; mensaje = "Balance: " # Nat64.toText(natToNat64(balance.e8s)) }))
-          };
-          case (#Err(e)) {
-            #err(#ErrorLedger({ codigo = "LEDGER_ERROR"; mensaje = debug_show(e) }))
-          };
-        }
-      }
-    }
-  };
-
   public shared query ({ caller }) func resumenTransacciones() : async [Transaccion] {
     let buf = Buffer.Buffer<Transaccion>(0);
     for (tx in transacciones.vals()) {
@@ -371,6 +423,7 @@ actor class HechoenOaxacaBackend() = this {
     stableTransacciones := Iter.toArray(transacciones.entries());
     stableLogs := Buffer.toArray(logs);
   };
+  
   system func postupgrade() {
     usuarios := HashMap.fromIter<Principal, Usuario>(stableUsuarios.vals(), 0, Principal.equal, Principal.hash);
     productos := HashMap.fromIter<Text, Producto>(stableProductos.vals(), 0, Text.equal, Text.hash);
