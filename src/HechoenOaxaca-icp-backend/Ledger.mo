@@ -5,21 +5,24 @@ import Principal "mo:base/Principal";
 
 module {
   // -------------------
-  // Tipos básicos
+  // Tipos básicos (SIMPLIFICADOS según especificación oficial)
   // -------------------
   public type AccountIdentifier = Blob;
   public type Subaccount = Blob;
 
   public type Tokens = {
-    e8s : Nat;
+    e8s : Nat64;
   };
 
-  public type BlockIndex = Nat;
+  public type BlockIndex = Nat64;
   public type Memo = Nat64;
-  public type Timestamp = Nat64;
+  
+  public type TimeStamp = {
+    timestamp_nanos : Nat64;
+  };
 
   // -------------------
-  // Transferencias
+  // TransferArgs según especificación oficial
   // -------------------
   public type TransferArgs = {
     memo : Memo;
@@ -27,7 +30,7 @@ module {
     fee : Tokens;
     from_subaccount : ?Subaccount;
     to : AccountIdentifier;
-    created_at_time : ?Timestamp;
+    created_at_time : ?TimeStamp;
   };
 
   public type TransferError = {
@@ -51,75 +54,13 @@ module {
   };
 
   // -------------------
-  // Métodos de archivo de bloques
-  // -------------------
-  public type Archive = {
-    canister_id : Principal;
-  };
-
-  public type Archives = {
-    archives : [Archive];
-  };
-
-  public type GetBlocksArgs = {
-    start : BlockIndex;
-    length : Nat;
-  };
-
-  public type Block = Blob; // simplificado (bloque binario)
-  public type BlockRange = {
-    blocks : [Block];
-  };
-
-  public type QueryBlocksResponse = {
-    chain_length : Nat64;
-    certificate : ?Blob;
-    blocks : [Block];
-    first_block_index : BlockIndex;
-    archived_blocks : [{
-      start : BlockIndex;
-      length : Nat;
-      callback : shared query GetBlocksArgs -> async BlockRange;
-    }];
-  };
-
-  // -------------------
-  // Estado del ledger
-  // -------------------
-  public type Symbol = Text;
-  public type Name = Text;
-
-  public type InitArgs = {
-    minting_account : AccountIdentifier;
-    initial_values : [(AccountIdentifier, Tokens)];
-    max_message_size_bytes : ?Nat64;
-    transaction_window : ?Nat64;
-    archive_options : {
-      trigger_threshold : Nat64;
-      num_blocks_to_archive : Nat64;
-      controller_id : Principal;
-      cycles_for_archive_creation : ?Nat64;
-      max_message_size_bytes : ?Nat64;
-    };
-  };
-
-  // -------------------
-  // Firma del canister Ledger
+  // Firma del canister Ledger (SIMPLIFICADA)
   // -------------------
   public type Self = actor {
-    // Transferencias
     transfer : (TransferArgs) -> async TransferResult;
-
-    // Balance de cuenta
-    account_balance_dfx : (AccountBalanceArgs) -> async Tokens;
-
-    // Información general
-    name : () -> async Name;
-    symbol : () -> async Symbol;
-    decimals : () -> async Nat32;
-
-    // Archivo de bloques
-    archives : () -> async Archives;
-    query_blocks : (GetBlocksArgs) -> async QueryBlocksResponse;
+    account_balance : (AccountBalanceArgs) -> async Tokens;
+    name : () -> async Text;
+    symbol : () -> async Text;
+    decimals : () -> async Nat8;  // ✅ CORREGIDO: Nat8 en lugar de Nat32
   };
 };

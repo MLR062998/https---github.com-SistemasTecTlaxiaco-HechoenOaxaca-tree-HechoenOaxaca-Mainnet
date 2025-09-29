@@ -5,7 +5,8 @@ import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
-import { FaTrash, FaShoppingCart } from "react-icons/fa";
+import Alert from "react-bootstrap/Alert";
+import { FaTrash, FaShoppingCart, FaExclamationTriangle } from "react-icons/fa";
 import { useAuthContext } from "./authContext";
 import { useCarrito } from "../context/CarritoContext";
 
@@ -15,12 +16,11 @@ const CarritoDeCliente = () => {
   const { carrito, eliminarDelCarrito, vaciarCarrito, total, resumenCarrito } = useCarrito();
   const [error, setError] = useState("");
   const [procesando, setProcesando] = useState(false);
-  
-  // ✅ NUEVO: Estados para modales de confirmación
   const [showModalEliminar, setShowModalEliminar] = useState(false);
   const [showModalVaciar, setShowModalVaciar] = useState(false);
   const [productoAEliminar, setProductoAEliminar] = useState(null);
 
+  // ✅ CORREGIDO: Función mejorada con diagnóstico
   const procederAlCheckout = async () => {
     if (authState.status !== "authenticated" || !actor) {
       setError("Debes iniciar sesión para proceder con el pago.");
@@ -36,36 +36,107 @@ const CarritoDeCliente = () => {
     setError("");
 
     try {
-      const ids = carrito.map((producto) => producto.id);
-      const respuesta = await actor.realizarCompra(ids);
+      console.log("🛒 === DIAGNÓSTICO DE COMPRA ===");
+      
+      // 1. Verificar carrito actual
+      console.log("1. Carrito completo:", carrito);
+      console.log("2. IDs a enviar:", carrito.map(p => p.id));
+      console.log("3. Nombres de productos:", carrito.map(p => p.nombre));
+      
+      // 2. Obtener productos actuales del backend para comparar
+      console.log("4. Obteniendo productos del backend...");
+      const productosBackend = await actor.listarProductos();
+      console.log("5. Productos en backend:", productosBackend);
+      console.log("6. IDs en backend:", productosBackend.map(p => p.id));
+      
+      // 3. Verificar coincidencias
+      const idsBackend = productosBackend.map(p => p.id);
+      const idsCarrito = carrito.map(p => p.id);
+      
+      const coincidencias = idsCarrito.filter(id => idsBackend.includes(id));
+      const noCoinciden = idsCarrito.filter(id => !idsBackend.includes(id));
+      
+      console.log("7. IDs que coinciden:", coincidencias);
+      console.log("8. IDs que NO coinciden:", noCoinciden);
+      
+      if (noCoinciden.length > 0) {
+        setError(`Error: Los siguientes productos no existen en el sistema: ${noCoinciden.join(', ')}. Por favor, actualiza la página.`);
+        setProcesando(false);
+        return;
+      }
 
-      if ("ok" in respuesta) {
+      if (coincidencias.length === 0) {
+        setError("Error: No hay productos válidos para comprar. Tu carrito puede estar desactualizado.");
+        setProcesando(false);
+        return;
+      }
+
+      // 4. Proceder con la compra solo si hay coincidencias
+      console.log("9. Iniciando compra con IDs válidos:", coincidencias);
+      const resultado = await actor.realizarCompra(coincidencias);
+      console.log("10. Respuesta del backend:", resultado);
+
+      if ("ok" in resultado) {
+        console.log("✅ Compra exitosa!");
         vaciarCarrito();
         navigate("/checkout-confirmado", { 
           state: { 
             total: total,
-            productos: carrito.length
+            productos: carrito.length,
+            detalles: resultado.ok
           } 
         });
       } else {
-        console.error("Error al procesar la compra:", respuesta.err);
-        setError(`Error al procesar la compra: ${JSON.stringify(respuesta.err)}`);
+        const errorMsg = obtenerMensajeError(resultado.err);
+        console.error("❌ Error en la compra:", resultado.err);
+        setError(`Error al procesar la compra: ${errorMsg}`);
       }
     } catch (err) {
-      console.error("❌ Error al realizar la compra:", err);
-      setError("Hubo un error al procesar el pago. Intenta nuevamente.");
+      console.error("❌ Error excepcional en la compra:", err);
+      setError(`Error de conexión: ${err.message || "Intenta nuevamente más tarde."}`);
     } finally {
       setProcesando(false);
     }
   };
 
-  // ✅ NUEVO: Función para confirmar eliminación de producto
+  // ✅ NUEVO: Función para traducir errores del backend
+  const obtenerMensajeError = (error) => {
+    if (!error) return "Error desconocido";
+    
+    if (typeof error === 'object') {
+      if ('ErrorValidacion' in error) {
+        return `Error de validación: ${error.ErrorValidacion}`;
+      }
+      if ('ErrorLedger' in error) {
+        return `Error de pago: ${error.ErrorLedger.mensaje || error.ErrorLedger.codigo}`;
+      }
+      if ('ProductoNoExiste' in error) {
+        return "Uno o más productos no existen o no están disponibles";
+      }
+      if ('SaldoInsuficiente' in error) {
+        return "Saldo insuficiente para completar la compra";
+      }
+      if ('PermisoDenegado' in error) {
+        return "No tienes permisos para realizar esta compra";
+      }
+      if ('UsuarioNoExiste' in error) {
+        return "Debes estar registrado para realizar compras";
+      }
+    }
+    
+    if (typeof error === 'string') {
+      return error;
+    }
+    
+    return JSON.stringify(error);
+  };
+
+  // ✅ Funciones de confirmación
   const confirmarEliminarProducto = (producto) => {
     setProductoAEliminar(producto);
     setShowModalEliminar(true);
   };
 
-  // ✅ NUEVO: Función para ejecutar eliminación después de confirmación
   const ejecutarEliminacion = () => {
     if (productoAEliminar) {
       eliminarDelCarrito(productoAEliminar.id);
@@ -74,12 +145,10 @@ const CarritoDeCliente = () => {
     }
   };
 
-  // ✅ NUEVO: Función para confirmar vaciar carrito
   const confirmarVaciarCarrito = () => {
     setShowModalVaciar(true);
   };
 
-  // ✅ NUEVO: Función para ejecutar vaciado después de confirmación
   const ejecutarVaciarCarrito = () => {
     vaciarCarrito();
     setShowModalVaciar(false);
@@ -97,7 +166,6 @@ const CarritoDeCliente = () => {
 
   return (
     <div className="carrito-de-cliente container mt-4">
-      {/* ✅ MODIFICADO: Botones superiores sin "Volver al Dashboard" */}
       <div className="botones-superiores d-flex justify-content-between align-items-center mb-4">
         <div>
           <Button 
@@ -120,9 +188,10 @@ const CarritoDeCliente = () => {
       <h2 className="text-center mb-4">🛒 Mi Carrito de Compras</h2>
 
       {error && (
-        <div className="alert alert-danger text-center" role="alert">
+        <Alert variant="danger" className="text-center">
+          <FaExclamationTriangle className="me-2" />
           {error}
-        </div>
+        </Alert>
       )}
 
       {carrito.length === 0 ? (
@@ -136,7 +205,6 @@ const CarritoDeCliente = () => {
         </div>
       ) : (
         <div className="productos-en-carrito">
-          {/* Lista de productos en el carrito */}
           {carrito.map((producto) => (
             <Card key={producto.id} className="mb-3 shadow-sm">
               <Card.Body className="d-flex justify-content-between align-items-center">
@@ -182,7 +250,6 @@ const CarritoDeCliente = () => {
             </Card>
           ))}
           
-          {/* Resumen y checkout */}
           <Card className="mt-4 border-success shadow">
             <Card.Body className="text-center">
               <h4 className="text-success mb-3">📋 Resumen de tu Pedido</h4>
@@ -217,9 +284,9 @@ const CarritoDeCliente = () => {
                   </Button>
                   
                   {procesando && (
-                    <p className="text-muted mt-2 small">
-                      ⏳ Esta operación puede tomar unos segundos...
-                    </p>
+                    <Alert variant="info" className="mt-2 small">
+                      ⏳ Procesando transacción en la blockchain... Esto puede tomar unos segundos.
+                    </Alert>
                   )}
                 </div>
               </div>
@@ -228,7 +295,7 @@ const CarritoDeCliente = () => {
         </div>
       )}
 
-      {/* ✅ NUEVO: Modal de confirmación para eliminar producto */}
+      {/* Modal de confirmación para eliminar producto */}
       <Modal show={showModalEliminar} onHide={() => setShowModalEliminar(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>🗑️ Confirmar Eliminación</Modal.Title>
@@ -248,7 +315,7 @@ const CarritoDeCliente = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* ✅ NUEVO: Modal de confirmación para vaciar carrito */}
+      {/* Modal de confirmación para vaciar carrito */}
       <Modal show={showModalVaciar} onHide={() => setShowModalVaciar(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>🚮 Vaciar Carrito</Modal.Title>

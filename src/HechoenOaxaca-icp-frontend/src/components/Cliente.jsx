@@ -164,9 +164,7 @@ const ClienteDashboard = () => {
         <Button variant="primary" className="me-2" onClick={() => navigate("/carrito")}>
           🛒 Carrito
         </Button>
-        <Button variant="outline-primary" onClick={() => setShowEditModal(true)}>
-          👤 Editar Perfil
-        </Button>
+        
       </div>
 
       {/* Búsqueda y Filtros */}

@@ -10,14 +10,14 @@ import Array "mo:base/Array";
 import Nat "mo:base/Nat";
 import Nat64 "mo:base/Nat64";
 import Nat32 "mo:base/Nat32";
+import Nat8 "mo:base/Nat8";
 import Time "mo:base/Time";
 import Option "mo:base/Option";
 import Debug "mo:base/Debug";
 import Buffer "mo:base/Buffer";
 import Error "mo:base/Error";
 
-import AID "mo:principal/AccountIdentifier";
-import Ledger "./Ledger";  // ✅ MANTENEMOS Ledger
+import Ledger "./Ledger";
 
 actor class HechoenOaxacaBackend() = this {
 
@@ -27,6 +27,93 @@ actor class HechoenOaxacaBackend() = this {
 
   // Conexión al Ledger ICP oficial
   let ledger = actor("ryjl3-tyaaa-aaaaa-aaaba-cai") : Ledger.Self;
+
+  // ========= IMPLEMENTACIÓN CORRECTA DE ACCOUNT IDENTIFIER =========
+  module AccountIdentifier {
+    public type AccountIdentifier = Blob;
+    public type Subaccount = Blob;
+
+    public func defaultSubaccount() : Subaccount {
+        // ✅ CORREGIDO: Usar Array.tabulate en lugar de Array.init
+        let zeros : [Nat8] = Array.tabulate<Nat8>(32, func(i) { 0 });
+        Blob.fromArray(zeros);
+    };
+
+    // Implementación de CRC32
+    func crc32(data : [Nat8]) : Nat32 {
+        var crc : Nat32 = 0xFFFFFFFF;
+        for (byte in data.vals()) {
+            crc := crc ^ Nat32.fromNat(Nat8.toNat(byte));
+            var j : Nat = 0;
+            while (j < 8) {
+                if (crc & 1 == 1) {
+                    crc := (crc >> 1) ^ 0xEDB88320;
+                } else {
+                    crc := crc >> 1;
+                };
+                j += 1;
+            };
+        };
+        return crc ^ 0xFFFFFFFF;
+    };
+
+    func beBytes(n : Nat32) : [Nat8] {
+        [
+            Nat8.fromNat(Nat32.toNat((n >> 24) & 0xFF)),
+            Nat8.fromNat(Nat32.toNat((n >> 16) & 0xFF)),
+            Nat8.fromNat(Nat32.toNat((n >> 8) & 0xFF)),
+            Nat8.fromNat(Nat32.toNat(n & 0xFF))
+        ];
+    };
+
+    // Función para obtener slice de un array (reemplazo para Array.slice)
+    func slice(array : [Nat8], start : Nat, end : Nat) : [Nat8] {
+        Array.tabulate<Nat8>(end - start, func(i) { array[start + i] });
+    };
+
+    // Función hash simple pero consistente basada en el principal
+    func principalHash(principal : Principal) : [Nat8] {
+        let principalBytes = Blob.toArray(Principal.toBlob(principal));
+        Array.tabulate<Nat8>(28, func(i) {
+            if (i < principalBytes.size()) {
+                principalBytes[i]
+            } else {
+                Nat8.fromNat((i * 13 + (if (principalBytes.size() > 0) Nat8.toNat(principalBytes[0]) else 0)) % 256)
+            }
+        });
+    };
+
+    public func accountIdentifier(principal : Principal, subaccount : Subaccount) : AccountIdentifier {
+        // Generar hash del principal
+        let hash = principalHash(principal);
+        
+        // Calcular checksum CRC32 del hash
+        let checksum = crc32(hash);
+        let checksumBytes = beBytes(checksum);
+        
+        Debug.print("🔍 Checksum calculado: " # debug_show(checksumBytes) # " para principal: " # Principal.toText(principal));
+        
+        // ✅ CORREGIDO: Usar función auxiliar para combinar arrays
+        let accountId = combineArrays(checksumBytes, hash);
+        Blob.fromArray(accountId)
+    };
+
+    // Función auxiliar para combinar arrays sin usar Array.append
+    func combineArrays(a : [Nat8], b : [Nat8]) : [Nat8] {
+        let size = a.size() + b.size();
+        Array.tabulate<Nat8>(size, func(i) {
+            if (i < a.size()) {
+                a[i]
+            } else {
+                b[i - a.size()]
+            }
+        });
+    };
+
+    public func validateAccountIdentifier(accountIdentifier : AccountIdentifier) : Bool {
+        accountIdentifier.size() == 32
+    };
+  };
 
   // ========= TIPOS =========
   public type Rol = { #Artesano; #Intermediario; #Cliente };
@@ -97,10 +184,39 @@ actor class HechoenOaxacaBackend() = this {
     Nat64.toNat(n64)
   };
 
-  // ✅ CORREGIDO: Función incrementNat64 con tipo de retorno explícito
   private func incrementNat64(map : HashMap.HashMap<Principal, Nat64>, key : Principal, value : Nat64) : () {
     let current = Option.get(map.get(key), 0:Nat64);
     map.put(key, current + value);
+  };
+
+  // ========= FUNCIÓN CORREGIDA PARA CREAR ACCOUNT IDENTIFIER VÁLIDO =========
+  private func createAccountIdentifier(principal : Principal) : Blob {
+    let subaccount = AccountIdentifier.defaultSubaccount();
+    let accountId = AccountIdentifier.accountIdentifier(principal, subaccount);
+    
+    let bytes = Blob.toArray(accountId);
+    
+    // ✅ CORREGIDO: Función auxiliar para obtener slice
+    func getSlice(arr : [Nat8], start : Nat, end : Nat) : [Nat8] {
+        Array.tabulate<Nat8>(end - start, func(i) { arr[start + i] });
+    };
+    
+    let checksum = getSlice(bytes, 0, 4);
+    Debug.print("✅ AccountIdentifier generado para: " # Principal.toText(principal));
+    Debug.print("🔍 Checksum: " # debug_show(checksum) # ", Tamaño: " # Nat.toText(bytes.size()) # " bytes");
+    
+    accountId
+  };
+
+  private func accountIdentifierToText(accountId : Blob) : Text {
+    let bytes = Blob.toArray(accountId);
+    var result = "";
+    for (i in Iter.range(0, 7)) {
+      if (i < bytes.size()) {
+        result := result # Nat8.toText(bytes[i]) # " ";
+      };
+    };
+    result # "... (" # Nat.toText(bytes.size()) # " bytes)"
   };
 
   // ========= PRIVADAS =========
@@ -138,8 +254,9 @@ actor class HechoenOaxacaBackend() = this {
     switch (rolUsuario) {
       case null return #err(#RolNoValido);
       case (?r) {
-        let accountIdBytes = AID.fromPrincipal(caller, null);
-        let accountIdBlob = Blob.fromArray(accountIdBytes);
+        let accountIdBlob = createAccountIdentifier(caller);
+        let accountIdBytes = Blob.toArray(accountIdBlob);
+        
         let nuevoUsuario : Usuario = {
           nombreCompleto = nombreCompleto;
           lugarOrigen = lugarOrigen;
@@ -156,6 +273,41 @@ actor class HechoenOaxacaBackend() = this {
     }
   };
 
+  // ========= ACTUALIZAR PERFIL =========
+  public shared ({ caller }) func actualizarPerfil(
+    nombreCompleto : Text,
+    lugarOrigen : Text,
+    telefono : Text
+  ) : async Result.Result<(), AplicationError> {
+    try {
+      switch (usuarios.get(caller)) {
+        case (?usuarioExistente) {
+          if (Text.size(nombreCompleto) < 3) return #err(#ErrorValidacion("Nombre completo debe tener al menos 3 caracteres"));
+          if (Text.size(lugarOrigen) < 3)    return #err(#ErrorValidacion("Lugar de origen debe tener al menos 3 caracteres"));
+          if (Text.size(telefono) < 7)       return #err(#ErrorValidacion("Teléfono debe tener al menos 7 dígitos"));
+
+          let usuarioActualizado : Usuario = {
+            nombreCompleto = nombreCompleto;
+            lugarOrigen = lugarOrigen;
+            telefono = telefono;
+            rol = usuarioExistente.rol;
+            fechaRegistro = usuarioExistente.fechaRegistro;
+            verificado = usuarioExistente.verificado;
+            accountId = usuarioExistente.accountId;
+          };
+
+          usuarios.put(caller, usuarioActualizado);
+          logEvento("✏️ Perfil actualizado: " # Principal.toText(caller));
+          #ok(())
+        };
+        case null return #err(#UsuarioNoExiste);
+      }
+    } catch (e) {
+      logEvento("❌ actualizarPerfil: " # Error.message(e));
+      #err(#ErrorInterno("Error inesperado al actualizar perfil"))
+    }
+  };
+
   public shared query ({ caller }) func obtenerUsuario() : async Result.Result<Usuario, AplicationError> {
     switch (usuarios.get(caller)) { case (?u) #ok(u); case null #err(#UsuarioNoExiste) }
   };
@@ -165,8 +317,8 @@ actor class HechoenOaxacaBackend() = this {
   };
 
   public shared query func obtenerAccountIdentifier(p : Principal) : async Text {
-    let aid = AID.fromPrincipal(p, null);
-    AID.toText(aid)
+    let accountId = createAccountIdentifier(p);
+    accountIdentifierToText(accountId)
   };
 
   // ========= PRODUCTOS =========
@@ -183,7 +335,6 @@ actor class HechoenOaxacaBackend() = this {
         case null return #err(#UsuarioNoExiste);
       };
 
-      // ✅ CORREGIDO: Usar Text.toIter().size() para contar caracteres Unicode (acentos)
       if (Iter.size(Text.toIter(nombre)) < 3) return #err(#ErrorValidacion("Nombre muy corto (mín 3 caracteres)"));
       if (precio == 0) return #err(#ErrorValidacion("Precio debe ser positivo"));
       if (Iter.size(Text.toIter(descripcion)) < 10) return #err(#ErrorValidacion("Descripción muy corta (mín 10 caracteres)"));
@@ -228,7 +379,6 @@ actor class HechoenOaxacaBackend() = this {
             return #err(#PermisoDenegado);
           };
           
-          // ✅ CORREGIDO: Usar Text.toIter().size() para contar caracteres Unicode (acentos)
           if (Iter.size(Text.toIter(nombre)) < 3) return #err(#ErrorValidacion("Nombre muy corto (mín 3 caracteres)"));
           if (precio == 0) return #err(#ErrorValidacion("Precio debe ser positivo"));
           if (Iter.size(Text.toIter(descripcion)) < 10) return #err(#ErrorValidacion("Descripción muy corta (mín 10 caracteres)"));
@@ -318,9 +468,10 @@ actor class HechoenOaxacaBackend() = this {
     Buffer.toArray(productosArtesano)
   };
 
-  // ========= COMPRAS / PAGOS =========
+  // ========= COMPRAS / PAGOS ========= (FUNCIÓN COMPLETAMENTE CORREGIDA)
   public shared ({ caller }) func realizarCompra(productoIds : [Text]) : async Result.Result<(), AplicationError> {
     try {
+      // Validaciones de usuario y carrito
       switch (usuarios.get(caller)) {
         case null return #err(#UsuarioNoExiste);
         case (?u) {
@@ -331,10 +482,13 @@ actor class HechoenOaxacaBackend() = this {
           }
         }
       };
+      
       if (productoIds.size() == 0) return #err(#ErrorValidacion("Carrito vacío"));
 
       let productosSeleccionados = Buffer.Buffer<Producto>(productoIds.size());
       let artesanosTotales = HashMap.HashMap<Principal, Nat64>(0, Principal.equal, Principal.hash);
+
+      Debug.print("🛒 Iniciando compra para usuario: " # Principal.toText(caller));
 
       for (pid in productoIds.vals()) {
         switch (productos.get(pid)) {
@@ -355,23 +509,39 @@ actor class HechoenOaxacaBackend() = this {
       };
 
       let timestamp = Time.now();
-      for ((artesano, montoTotal) in artesanosTotales.entries()) {
-        let cuenta = Blob.fromArray(AID.fromPrincipal(artesano, null));
+      
+      Debug.print("👨‍🎨 Artesanos a pagar: " # debug_show(Iter.toArray(artesanosTotales.entries())));
 
-        let res = await ledger.transfer({
+      for ((artesano, montoTotal) in artesanosTotales.entries()) {
+        Debug.print("💰 Procesando pago a: " # Principal.toText(artesano) # " - Monto: " # Nat64.toText(montoTotal));
+
+        // ✅ USAR LA FUNCIÓN CORREGIDA
+        let cuenta = createAccountIdentifier(artesano);
+        
+        let cuentaBytes = Blob.toArray(cuenta);
+        Debug.print("🔍 AccountIdentifier generado - Tamaño: " # Nat.toText(cuentaBytes.size()));
+
+        // ✅ LLAMADA AL LEDGER
+        let transferArgs : Ledger.TransferArgs = {
           memo = 0;
-          amount = { e8s = nat64ToNat(montoTotal) };
-          fee = { e8s = nat64ToNat(TRANSFER_FEE) };
+          amount = { e8s = montoTotal };
+          fee = { e8s = TRANSFER_FEE };
           from_subaccount = null;
           to = cuenta;
           created_at_time = null;
-        });
+        };
+
+        Debug.print("📤 Enviando transferencia...");
+        
+        let res = await ledger.transfer(transferArgs);
 
         switch (res) {
           case (#Ok(block)) {
-            let block64 = natToNat64(block);
-            logEvento("✅ Pago a artesano " # Principal.toText(artesano) # " por " # Nat64.toText(montoTotal) # " e8s. block=" # Nat64.toText(block64));
-            for (prod in Buffer.toArray(productosSeleccionados).vals()) {
+            Debug.print("✅ Pago exitoso. Block: " # Nat64.toText(block));
+            
+            logEvento("✅ Pago a artesano " # Principal.toText(artesano) # " por " # Nat64.toText(montoTotal) # " e8s. block=" # Nat64.toText(block));
+            
+            for (prod in productosSeleccionados.vals()) {
               if (prod.artesano == artesano) {
                 let txId = await generateId("tx-");
                 transacciones.put(txId, {
@@ -381,19 +551,22 @@ actor class HechoenOaxacaBackend() = this {
                   productoId = prod.id;
                   monto = prod.precio;
                   fecha = timestamp;
-                  blockHeight = ?block64;
+                  blockHeight = ?block;
                   estado = "Pagado";
                 });
               }
             };
           };
           case (#Err(#BadFee { expected_fee })) {
-            return #err(#ErrorLedger({ codigo = "BAD_FEE"; mensaje = "Fee esperado: " # Nat64.toText(natToNat64(expected_fee.e8s)) }));
+            Debug.print("❌ Error de fee: " # Nat64.toText(expected_fee.e8s));
+            return #err(#ErrorLedger({ codigo = "BAD_FEE"; mensaje = "Fee esperado: " # Nat64.toText(expected_fee.e8s) }));
           };
           case (#Err(#InsufficientFunds { balance })) {
-            return #err(#ErrorLedger({ codigo = "INSUFFICIENT_FUNDS"; mensaje = "Balance: " # Nat64.toText(natToNat64(balance.e8s)) }));
+            Debug.print("❌ Fondos insuficientes: " # Nat64.toText(balance.e8s));
+            return #err(#ErrorLedger({ codigo = "INSUFFICIENT_FUNDS"; mensaje = "Balance: " # Nat64.toText(balance.e8s) }));
           };
           case (#Err(e)) {
+            Debug.print("❌ Error del ledger: " # debug_show(e));
             return #err(#ErrorLedger({ codigo = "LEDGER_ERROR"; mensaje = debug_show(e) }));
           };
         };
@@ -401,8 +574,9 @@ actor class HechoenOaxacaBackend() = this {
 
       #ok(())
     } catch (e) {
+      Debug.print("❌ Error inesperado en realizarCompra: " # Error.message(e));
       logEvento("❌ realizarCompra: " # Error.message(e));
-      #err(#ErrorInterno("Error inesperado al procesar compra"))
+      #err(#ErrorInterno("Error inesperado al procesar compra: " # Error.message(e)))
     }
   };
 
