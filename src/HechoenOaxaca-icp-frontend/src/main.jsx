@@ -9,6 +9,10 @@ window.Buffer = Buffer;
 
 import { AuthProvider } from "./components/authContext";
 import { BrowserRouter } from "react-router-dom";
+import { setupGlobalErrorHandling } from "./utils/global-error-handler"; // ✅ Corregido el nombre
+
+// Configurar manejo global de errores
+setupGlobalErrorHandling();
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 

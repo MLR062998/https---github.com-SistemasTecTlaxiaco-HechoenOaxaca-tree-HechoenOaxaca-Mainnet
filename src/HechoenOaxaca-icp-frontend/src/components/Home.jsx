@@ -4,18 +4,52 @@ import { useNavigate } from "react-router-dom";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
+import Carousel from "react-bootstrap/Carousel";
+import Alert from "react-bootstrap/Alert";
+import { FaShoppingCart, FaEye, FaStar, FaTruck, FaShieldAlt, FaHeart } from "react-icons/fa";
 import Compra from "./Compra";
 import { processProductsList } from "../utils/imageUtils";
+import { useCarrito } from "../context/CarritoContext";
 import "../index.scss";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const Home = () => {
-  const { actor } = useAuthContext();
+  const { actor, isAuthenticated } = useAuthContext();
+  const { agregarAlCarrito } = useCarrito();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showAuthAlert, setShowAuthAlert] = useState(false);
   const navigate = useNavigate();
+
+  // ✅ Frases mejoradas para el carrusel
+  const carouselMessages = [
+    {
+      title: "Artesanías Oaxaqueñas",
+      subtitle: "Hecho a mano con tradición y corazón",
+      icon: <FaHeart className="carousel-icon" />,
+      color: "#e0c144"
+    },
+    {
+      title: "Productos Únicos",
+      subtitle: "Cada pieza cuenta una historia especial",
+      icon: <FaStar className="carousel-icon" />,
+      color: "#28a745"
+    },
+    {
+      title: "Origen Auténtico",
+      subtitle: "Directo de las manos de nuestros artesanos",
+      icon: <FaShieldAlt className="carousel-icon" />,
+      color: "#007bff"
+    },
+    {
+      title: "Envíos Nacionales",
+      subtitle: "Recibe donde estés en todo México",
+      icon: <FaTruck className="carousel-icon" />,
+      color: "#6f42c1"
+    }
+  ];
 
   const fetchProducts = async () => {
     if (!actor?.listarProductos) return;
@@ -25,7 +59,6 @@ const Home = () => {
       const result = await actor.listarProductos();
       if (!Array.isArray(result)) throw new Error("listarProductos no devolvió una lista");
 
-      // ✅ CORREGIDO: Procesar imágenes correctamente
       const productosProcesados = processProductsList(result);
       setProducts(productosProcesados);
     } catch (err) {
@@ -44,75 +77,279 @@ const Home = () => {
     setShowModal(true);
   };
 
-  return (
-    <section className="mt-5 text-center">
-      <div className="eslogan-container">
-        <h1 className="eslogan-text">Hecho a mano, Hecho con el corazón</h1>
-        <p className="eslogan-subtext">Artesanías únicas que cuentan historias</p>
-      </div>
+  const handleAddToCart = (product, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
 
-      <div className="container mt-4">
-        {loading ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ height: "200px" }}>
-            <Spinner animation="border" variant="primary" />
+    if (!isAuthenticated) {
+      setShowAuthAlert(true);
+      setTimeout(() => setShowAuthAlert(false), 5000);
+      return;
+    }
+
+    try {
+      agregarAlCarrito(product);
+      alert("✅ Producto agregado al carrito");
+    } catch (error) {
+      console.error("Error agregando al carrito:", error);
+      alert("❌ Error al agregar el producto al carrito");
+    }
+  };
+
+  const handleAddToCartFromModal = (product) => {
+    try {
+      agregarAlCarrito(product);
+      alert("✅ Producto agregado al carrito");
+      setShowModal(false);
+    } catch (error) {
+      console.error("Error agregando al carrito:", error);
+      alert("❌ Error al agregar el producto al carrito");
+    }
+  };
+
+  // Agrupar productos por categoría para mostrar mejor
+  const featuredProducts = products.slice(0, 8); // Solo mostrar 8 productos destacados
+
+  return (
+    <div className="home-container">
+      {/* ✅ Hero Section Mejorada */}
+      <section className="hero-section">
+        <div className="hero-content">
+          <h1 className="hero-title">
+            Descubre la Magia de <span className="highlight">Oaxaca</span>
+          </h1>
+          <p className="hero-subtitle">
+            Artesanías únicas, tradición viva y calidad excepcional
+          </p>
+          <div className="hero-buttons">
+            <Button 
+              variant="primary" 
+              size="lg"
+              className="hero-btn"
+              onClick={() => navigate("/productos")}
+            >
+              Explorar Colección
+            </Button>
+            <Button 
+              variant="outline-light" 
+              size="lg"
+              className="hero-btn"
+              onClick={() => navigate(isAuthenticated ? "/carrito" : "/")}
+            >
+              <FaShoppingCart className="me-2" />
+              Ver Carrito
+            </Button>
           </div>
-        ) : (
-          <div className="row">
-            {products.map((product) => (
-              <div key={product.id} className="col-md-4 mb-4">
-                <Card className="h-100">
-                  {/* ✅ CORREGIDO: Mostrar primera imagen correctamente */}
-                  {product.imagenes && product.imagenes[0] ? (
-                    <Card.Img
-                      variant="top"
-                      src={product.imagenes[0]}
-                      alt={`Imagen de ${product.nombre}`}
-                      style={{ 
-                        height: "200px", 
-                        objectFit: "cover",
-                        width: "100%"
-                      }}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
-                      }}
-                    />
-                  ) : (
-                    <div className="bg-light d-flex align-items-center justify-content-center" 
-                         style={{ height: "200px" }}>
-                      <span className="text-muted">Sin imagen</span>
-                    </div>
-                  )}
-                  
-                  <Card.Body className="d-flex flex-column">
-                    <Card.Title>{product.nombre}</Card.Title>
-                    <Card.Text className="flex-grow-1">
-                      {product.descripcion.length > 100 
-                        ? `${product.descripcion.substring(0, 100)}...` 
-                        : product.descripcion}
-                    </Card.Text>
-                    <Card.Text className="fw-bold">Precio: ICP {product.precioICP?.toFixed(2)}</Card.Text>
-                    <Button 
-                      variant="primary" 
-                      onClick={() => handleShowDetails(product)}
-                      className="mt-auto"
-                    >
-                      Ver Detalles
-                    </Button>
-                  </Card.Body>
-                </Card>
+        </div>
+      </section>
+
+      {/* ✅ Beneficios en tarjetas compactas */}
+      <section className="benefits-section py-4">
+        <div className="container">
+          <div className="row g-3 justify-content-center">
+            {carouselMessages.map((message, index) => (
+              <div key={index} className="col-md-3 col-sm-6">
+                <div 
+                  className="benefit-card text-center p-3 rounded"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${message.color}20, transparent)`,
+                    borderLeft: `4px solid ${message.color}`
+                  }}
+                >
+                  <div className="benefit-icon mb-2" style={{ color: message.color }}>
+                    {message.icon}
+                  </div>
+                  <h5 className="benefit-title mb-1">{message.title}</h5>
+                  <p className="benefit-text small text-muted mb-0">{message.subtitle}</p>
+                </div>
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      </section>
 
+      {/* ✅ Productos Destacados Compactos */}
+      <section className="featured-products py-4">
+        <div className="container">
+          <div className="section-header text-center mb-4">
+            <h2 className="section-title">Productos Destacados</h2>
+            <p className="section-subtitle text-muted">
+              Las mejores artesanías seleccionadas para ti
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-5">
+              <Spinner animation="border" variant="primary" />
+              <p className="mt-2">Cargando productos...</p>
+            </div>
+          ) : featuredProducts.length === 0 ? (
+            <div className="text-center py-5">
+              <h4>No hay productos disponibles</h4>
+              <p className="text-muted">Pronto tendremos nuevas artesanías</p>
+            </div>
+          ) : (
+            <div className="products-grid-compact">
+              {featuredProducts.map((product) => (
+                <div key={product.id} className="product-card-compact-wrapper">
+                  <Card className="product-card-compact">
+                    {/* Imagen del producto */}
+                    {product.imagenes && product.imagenes[0] ? (
+                      <div 
+                        className="product-image-compact-container"
+                        onClick={() => handleShowDetails(product)}
+                      >
+                        <Card.Img
+                          variant="top"
+                          src={product.imagenes[0]}
+                          alt={product.nombre}
+                          className="product-image-compact"
+                        />
+                        <div className="product-overlay">
+                          <Button 
+                            variant="light" 
+                            size="sm"
+                            className="overlay-btn"
+                          >
+                            <FaEye />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        className="product-image-placeholder-compact"
+                        onClick={() => handleShowDetails(product)}
+                      >
+                        <span className="placeholder-text">📷</span>
+                      </div>
+                    )}
+                    
+                    <Card.Body className="product-card-body-compact">
+                      <Card.Title className="product-title-compact">
+                        {product.nombre}
+                      </Card.Title>
+                      
+                      <Card.Text className="product-category-compact">
+                        <small className="text-muted">{product.tipo || "Artesanía"}</small>
+                      </Card.Text>
+                      
+                      <Card.Text className="product-description-compact">
+                        {product.descripcion?.length > 60 
+                          ? `${product.descripcion.substring(0, 60)}...` 
+                          : product.descripcion}
+                      </Card.Text>
+                      
+                      <div className="product-footer-compact">
+                        <div className="product-price-compact">
+                          <span className="price-amount">ICP {product.precioICP?.toFixed(2)}</span>
+                        </div>
+                        
+                        <div className="product-actions-compact">
+                          <Button 
+                            variant="outline-primary" 
+                            size="sm"
+                            className="detail-btn-compact"
+                            onClick={() => handleShowDetails(product)}
+                          >
+                            <FaEye className="me-1" /> Ver
+                          </Button>
+                          <Button 
+                            variant="success" 
+                            size="sm"
+                            className="cart-btn-compact"
+                            onClick={(e) => handleAddToCart(product, e)}
+                          >
+                            <FaShoppingCart className="me-1" /> Carrito
+                          </Button>
+                        </div>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {products.length > 8 && (
+            <div className="text-center mt-4">
+              <Button 
+                variant="outline-primary"
+                onClick={() => navigate("/productos")}
+              >
+                Ver Todos los Productos ({products.length})
+              </Button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ✅ Alerta de autenticación */}
+      {showAuthAlert && (
+        <div className="auth-alert-container">
+          <Alert 
+            variant="warning" 
+            className="alert-compact"
+            onClose={() => setShowAuthAlert(false)} 
+            dismissible
+          >
+            <Alert.Heading className="h6 mb-2">
+              <FaShoppingCart className="me-2" />
+              Inicia sesión para continuar
+            </Alert.Heading>
+            <p className="mb-2 small">
+              Debes estar autenticado para agregar productos al carrito.
+            </p>
+            <Button 
+              variant="outline-primary" 
+              size="sm"
+              onClick={() => navigate("/")}
+              className="mt-1"
+            >
+              Iniciar Sesión
+            </Button>
+          </Alert>
+        </div>
+      )}
+
+      {/* ✅ CTA Final */}
+      <section className="cta-section py-5">
+        <div className="container text-center">
+          <h3 className="cta-title mb-3">¿Listo para descubrir más?</h3>
+          <p className="cta-text mb-4">
+            Explora nuestra colección completa de artesanías oaxaqueñas
+          </p>
+          <div className="cta-buttons">
+            <Button 
+              variant="primary" 
+              size="lg"
+              className="me-3"
+              onClick={() => navigate("/productos")}
+            >
+              Ver Catálogo Completo
+            </Button>
+            {isAuthenticated && (
+              <Button 
+                variant="outline-primary" 
+                size="lg"
+                onClick={() => navigate("/carrito")}
+              >
+                <FaShoppingCart className="me-2" />
+                Ir al Carrito
+              </Button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ✅ Modal de Compra */}
       <Compra
         show={showModal}
         onClose={() => setShowModal(false)}
         product={selectedProduct}
+        onAddToCart={handleAddToCartFromModal}
       />
-    </section>
+    </div>
   );
 };
 

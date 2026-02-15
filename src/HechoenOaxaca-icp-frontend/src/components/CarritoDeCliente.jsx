@@ -1,26 +1,61 @@
-// src/components/CarritoDeCliente.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
-import { FaTrash, FaShoppingCart, FaExclamationTriangle } from "react-icons/fa";
+import Tab from 'react-bootstrap/Tab';
+import Tabs from 'react-bootstrap/Tabs';
+import { FaTrash, FaShoppingCart, FaExclamationTriangle, FaHistory, FaCheckCircle } from "react-icons/fa";
 import { useAuthContext } from "./authContext";
 import { useCarrito } from "../context/CarritoContext";
 
 const CarritoDeCliente = () => {
   const navigate = useNavigate();
-  const { actor, authState } = useAuthContext();
+  const { actor, authState, isAuthenticated } = useAuthContext();
   const { carrito, eliminarDelCarrito, vaciarCarrito, total, resumenCarrito } = useCarrito();
+  
   const [error, setError] = useState("");
   const [procesando, setProcesando] = useState(false);
   const [showModalEliminar, setShowModalEliminar] = useState(false);
   const [showModalVaciar, setShowModalVaciar] = useState(false);
   const [productoAEliminar, setProductoAEliminar] = useState(null);
+  const [comprasRealizadas, setComprasRealizadas] = useState([]);
+  const [cargandoCompras, setCargandoCompras] = useState(false);
+  const [tabActivo, setTabActivo] = useState("carrito");
 
-  // ✅ CORREGIDO: Función mejorada con diagnóstico
+  // ✅ CARGAR HISTORIAL DE COMPRAS
+  useEffect(() => {
+    const cargarComprasRealizadas = async () => {
+      if (!isAuthenticated || !actor) return;
+      
+      setCargandoCompras(true);
+      try {
+        console.log("🔄 Cargando historial de compras...");
+        const resultado = await actor.obtenerComprasUsuario();
+        console.log("📦 Compras obtenidas:", resultado);
+        
+        if ("ok" in resultado) {
+          setComprasRealizadas(resultado.ok || []);
+        } else {
+          console.warn("No se pudieron cargar las compras:", resultado.err);
+          setComprasRealizadas([]);
+        }
+      } catch (err) {
+        console.error("❌ Error cargando historial de compras:", err);
+        setComprasRealizadas([]);
+      } finally {
+        setCargandoCompras(false);
+      }
+    };
+
+    if (tabActivo === "historial") {
+      cargarComprasRealizadas();
+    }
+  }, [actor, isAuthenticated, tabActivo]);
+
+  // ✅ FUNCIÓN MEJORADA PARA CHECKOUT
   const procederAlCheckout = async () => {
     if (authState.status !== "authenticated" || !actor) {
       setError("Debes iniciar sesión para proceder con el pago.");
@@ -36,18 +71,16 @@ const CarritoDeCliente = () => {
     setError("");
 
     try {
-      console.log("🛒 === DIAGNÓSTICO DE COMPRA ===");
+      console.log("🛒 === INICIANDO PROCESO DE COMPRA ===");
       
       // 1. Verificar carrito actual
       console.log("1. Carrito completo:", carrito);
       console.log("2. IDs a enviar:", carrito.map(p => p.id));
-      console.log("3. Nombres de productos:", carrito.map(p => p.nombre));
       
       // 2. Obtener productos actuales del backend para comparar
-      console.log("4. Obteniendo productos del backend...");
+      console.log("3. Obteniendo productos del backend...");
       const productosBackend = await actor.listarProductos();
-      console.log("5. Productos en backend:", productosBackend);
-      console.log("6. IDs en backend:", productosBackend.map(p => p.id));
+      console.log("4. Productos en backend:", productosBackend.length);
       
       // 3. Verificar coincidencias
       const idsBackend = productosBackend.map(p => p.id);
@@ -56,11 +89,11 @@ const CarritoDeCliente = () => {
       const coincidencias = idsCarrito.filter(id => idsBackend.includes(id));
       const noCoinciden = idsCarrito.filter(id => !idsBackend.includes(id));
       
-      console.log("7. IDs que coinciden:", coincidencias);
-      console.log("8. IDs que NO coinciden:", noCoinciden);
+      console.log("5. IDs que coinciden:", coincidencias.length);
+      console.log("6. IDs que NO coinciden:", noCoinciden);
       
       if (noCoinciden.length > 0) {
-        setError(`Error: Los siguientes productos no existen en el sistema: ${noCoinciden.join(', ')}. Por favor, actualiza la página.`);
+        setError(`Error: ${noCoinciden.length} producto(s) no existen en el sistema. Por favor, actualiza la página.`);
         setProcesando(false);
         return;
       }
@@ -72,9 +105,9 @@ const CarritoDeCliente = () => {
       }
 
       // 4. Proceder con la compra solo si hay coincidencias
-      console.log("9. Iniciando compra con IDs válidos:", coincidencias);
+      console.log("7. Iniciando compra con IDs válidos:", coincidencias);
       const resultado = await actor.realizarCompra(coincidencias);
-      console.log("10. Respuesta del backend:", resultado);
+      console.log("8. Respuesta del backend:", resultado);
 
       if ("ok" in resultado) {
         console.log("✅ Compra exitosa!");
@@ -83,7 +116,8 @@ const CarritoDeCliente = () => {
           state: { 
             total: total,
             productos: carrito.length,
-            detalles: resultado.ok
+            detalles: resultado.ok,
+            transaccionId: resultado.ok.id || Date.now().toString()
           } 
         });
       } else {
@@ -99,7 +133,7 @@ const CarritoDeCliente = () => {
     }
   };
 
-  // ✅ NUEVO: Función para traducir errores del backend
+  // ✅ FUNCIÓN PARA TRADUCIR ERRORES
   const obtenerMensajeError = (error) => {
     if (!error) return "Error desconocido";
     
@@ -131,7 +165,7 @@ const CarritoDeCliente = () => {
     return JSON.stringify(error);
   };
 
-  // ✅ Funciones de confirmación
+  // ✅ FUNCIONES DE CONFIRMACIÓN
   const confirmarEliminarProducto = (producto) => {
     setProductoAEliminar(producto);
     setShowModalEliminar(true);
@@ -154,7 +188,24 @@ const CarritoDeCliente = () => {
     setShowModalVaciar(false);
   };
 
-  // Función segura para formatear precios
+  // ✅ FUNCIÓN PARA FORMATEAR FECHA
+  const formatearFecha = (timestamp) => {
+    if (!timestamp) return "Fecha no disponible";
+    try {
+      const fecha = new Date(Number(timestamp) / 1_000_000);
+      return fecha.toLocaleDateString('es-MX', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return "Fecha inválida";
+    }
+  };
+
+  // ✅ FUNCIÓN SEGURA PARA PRECIOS
   const formatearPrecio = (producto) => {
     try {
       const precioICP = producto.precioICP || (Number(producto.precio || 0) / 100_000_000);
@@ -164,8 +215,9 @@ const CarritoDeCliente = () => {
     }
   };
 
-  return (
-    <div className="carrito-de-cliente container mt-4">
+  // ✅ COMPONENTE DE CARRITO
+  const CarritoContent = () => (
+    <div className="carrito-content">
       <div className="botones-superiores d-flex justify-content-between align-items-center mb-4">
         <div>
           <Button 
@@ -184,8 +236,6 @@ const CarritoDeCliente = () => {
           </Button>
         )}
       </div>
-
-      <h2 className="text-center mb-4">🛒 Mi Carrito de Compras</h2>
 
       {error && (
         <Alert variant="danger" className="text-center">
@@ -294,6 +344,110 @@ const CarritoDeCliente = () => {
           </Card>
         </div>
       )}
+    </div>
+  );
+
+  // ✅ COMPONENTE DE HISTORIAL DE COMPRAS
+  const HistorialComprasContent = () => (
+    <div className="historial-content">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h4 className="mb-0">📦 Mis Compras Realizadas</h4>
+        <Button 
+          variant="outline-primary" 
+          onClick={() => setTabActivo("carrito")}
+        >
+          🛒 Volver al Carrito
+        </Button>
+      </div>
+
+      {cargandoCompras ? (
+        <div className="text-center p-5">
+          <Spinner animation="border" variant="primary" />
+          <p className="mt-2">Cargando tu historial de compras...</p>
+        </div>
+      ) : comprasRealizadas.length === 0 ? (
+        <div className="text-center p-5 border rounded bg-light">
+          <FaHistory className="display-4 text-muted mb-3" />
+          <h4 className="text-muted mb-3">Aún no tienes compras</h4>
+          <p className="text-muted mb-4">Tus compras aparecerán aquí una vez que realices tu primera compra</p>
+          <Button variant="primary" onClick={() => setTabActivo("carrito")}>
+            <FaShoppingCart className="me-2" />
+            Ir a Comprar
+          </Button>
+        </div>
+      ) : (
+        <div className="compras-list">
+          {comprasRealizadas.map((compra, index) => (
+            <Card key={compra.id || index} className="mb-4 shadow-sm border-success">
+              <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
+                <div>
+                  <FaCheckCircle className="me-2" />
+                  <strong>Compra #{comprasRealizadas.length - index}</strong>
+                </div>
+                <small>{formatearFecha(compra.fecha)}</small>
+              </Card.Header>
+              <Card.Body>
+                <div className="row">
+                  <div className="col-md-6">
+                    <h6>📋 Detalles de la Compra:</h6>
+                    <p className="mb-1"><strong>ID de Transacción:</strong> {compra.id || "N/A"}</p>
+                    <p className="mb-1"><strong>Total Pagado:</strong> 
+                      <span className="text-success fw-bold"> ICP {compra.total ? (Number(compra.total) / 100_000_000).toFixed(2) : "0.00"}</span>
+                    </p>
+                    <p className="mb-0"><strong>Estado:</strong> 
+                      <span className="badge bg-success ms-2">Completada</span>
+                    </p>
+                  </div>
+                  <div className="col-md-6">
+                    <h6>🛍️ Productos Comprados:</h6>
+                    {compra.productos && compra.productos.length > 0 ? (
+                      <ul className="list-unstyled">
+                        {compra.productos.map((producto, idx) => (
+                          <li key={idx} className="mb-1">
+                            • {producto.nombre || "Producto"} - 
+                            <span className="text-success"> ICP {producto.precio ? (Number(producto.precio) / 100_000_000).toFixed(2) : "0.00"}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-muted">No hay detalles de productos disponibles</p>
+                    )}
+                  </div>
+                </div>
+              </Card.Body>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="carrito-de-cliente container mt-4">
+      <h2 className="text-center mb-4">🛒 Mi Carrito de Compras</h2>
+
+      <Tabs
+        activeKey={tabActivo}
+        onSelect={(tab) => setTabActivo(tab)}
+        className="mb-4"
+        justify
+      >
+        <Tab eventKey="carrito" title={
+          <span>
+            🛒 Carrito Actual {carrito.length > 0 && `(${carrito.length})`}
+          </span>
+        }>
+          <CarritoContent />
+        </Tab>
+        
+        <Tab eventKey="historial" title={
+          <span>
+            📦 Historial de Compras {comprasRealizadas.length > 0 && `(${comprasRealizadas.length})`}
+          </span>
+        }>
+          <HistorialComprasContent />
+        </Tab>
+      </Tabs>
 
       {/* Modal de confirmación para eliminar producto */}
       <Modal show={showModalEliminar} onHide={() => setShowModalEliminar(false)} centered>

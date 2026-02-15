@@ -11,12 +11,12 @@ const Menu = () => {
     isAuthenticated,
     principalId,
     isLoading,
-    connect, // ✅ Ahora usamos connect en lugar de openProviderModal
+    connect,
     logout,
+    rol
   } = useAuthContext();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const rol = localStorage.getItem("rol");
 
   const handleLogout = async () => {
     try {
@@ -28,45 +28,113 @@ const Menu = () => {
     }
   };
 
+  // Función para formatear el principal ID
+  const formatPrincipalId = (principal) => {
+    if (!principal) return "";
+    return `${principal.slice(0, 5)}...${principal.slice(-3)}`;
+  };
+
   return (
     <div>
-      <nav className="navbar navbar-expand-lg custom-navbar">
-        <div className="container-fluid custom-container">
-          <Link to="/" className="custom-brand">Hecho en Oaxaca</Link>
-          <div className="custom-links-container">
+      <nav className="menu-navbar">
+        <div className="navbar-container">
+          <Link to="/" className="navbar-brand">
+            Hecho en Oaxaca
+          </Link>
+          
+          <div className="navbar-links">
             {!isAuthenticated ? (
               <button
-                className="custom-button login-button"
-                onClick={connect} // ✅ Cambiado de openProviderModal a connect
+                className={`menu-button login-connect-btn ${isLoading ? 'button-loading' : ''}`}
+                onClick={connect}
                 disabled={isLoading}
               >
-                {isLoading ? "Conectando..." : "Iniciar Sesión con NFID"} {/* ✅ Texto actualizado */}
+                {isLoading ? "Conectando..." : "Iniciar Sesión con NFID"}
               </button>
             ) : (
-              <>
-                {rol === "Cliente" && <Link to="/cliente-dashboard">Dashboard Cliente</Link>}
-                {rol === "Artesano" && <Link to="/artesano-dashboard">Dashboard Artesano</Link>}
-                {rol === "Intermediario" && <Link to="/intermediario-dashboard">Dashboard Intermediario</Link>}
+              <div className="auth-status">
+                {/* Información del usuario */}
+                <div className="user-info">
+                  <span>Usuario:</span>
+                  <span className="user-principal">
+                    {formatPrincipalId(principalId)}
+                  </span>
+                </div>
+                
+                {rol && (
+                  <div className="user-role">
+                    {rol}
+                  </div>
+                )}
+
+                {/* Enlaces al dashboard según el rol */}
+                {rol === "Cliente" && (
+                  <Link 
+                    to="/cliente-dashboard" 
+                    className="dashboard-link cliente-dashboard"
+                  >
+                    📊 Dashboard Cliente
+                  </Link>
+                )}
+                {rol === "Artesano" && (
+                  <Link 
+                    to="/artesano-dashboard" 
+                    className="dashboard-link artesano-dashboard"
+                  >
+                    🎨 Dashboard Artesano
+                  </Link>
+                )}
+                {rol === "Intermediario" && (
+                  <Link 
+                    to="/intermediario-dashboard" 
+                    className="dashboard-link intermediario-dashboard"
+                  >
+                    🤝 Dashboard Intermediario
+                  </Link>
+                )}
+
+                {/* Botón de logout */}
                 <button
-                  className="custom-button logout-button"
+                  className="menu-button logout-btn"
                   onClick={() => setShowLogoutModal(true)}
                 >
-                  Salir
+                  🚪 Salir
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>
       </nav>
 
-      <Modal show={showLogoutModal} onHide={() => setShowLogoutModal(false)}>
+      {/* Modal de confirmación de logout */}
+      <Modal 
+        show={showLogoutModal} 
+        onHide={() => setShowLogoutModal(false)}
+        className="logout-modal"
+        centered
+      >
         <Modal.Header closeButton>
-          <Modal.Title>Confirmación</Modal.Title>
+          <Modal.Title>🔐 Confirmar Cierre de Sesión</Modal.Title>
         </Modal.Header>
-        <Modal.Body>¿Está seguro de que quiere salir?</Modal.Body>
+        <Modal.Body>
+          <p>¿Está seguro de que desea cerrar sesión?</p>
+          <small className="text-muted">
+            Será redirigido a la página de inicio.
+          </small>
+        </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowLogoutModal(false)}>Cancelar</Button>
-          <Button variant="danger" onClick={handleLogout}>Salir</Button>
+          <Button 
+            variant="secondary" 
+            onClick={() => setShowLogoutModal(false)}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleLogout}
+          >
+            Sí, Cerrar Sesión
+          </Button>
         </Modal.Footer>
       </Modal>
     </div>

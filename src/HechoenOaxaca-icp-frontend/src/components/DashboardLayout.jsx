@@ -1,14 +1,27 @@
 // src/components/DashboardLayout.jsx
 import React from "react";
+import Menu from "./Menu";
+import "./DashboardLayout.scss"; // Asegúrate de crear este archivo
 
-const DashboardLayout = ({ title, children }) => {
+const DashboardLayout = ({ children, title }) => {
   return (
-    <div className="min-h-screen bg-gray-50 cliente-dashboard">
-      <header className="bg-white shadow p-4">
-        <h1 className="text-xl font-bold">{title}</h1>
-      </header>
-
-      <main className="p-4">{children}</main>
+    <div className="dashboard-layout">
+      {/* Menú fijo en la parte superior */}
+      <div className="dashboard-navbar">
+        <Menu />
+      </div>
+      
+      {/* Contenido principal con scroll independiente */}
+      <main className="dashboard-content">
+        {title && (
+          <div className="dashboard-header">
+            <h1>{title}</h1>
+          </div>
+        )}
+        <div className="dashboard-body">
+          {children}
+        </div>
+      </main>
     </div>
   );
 };
