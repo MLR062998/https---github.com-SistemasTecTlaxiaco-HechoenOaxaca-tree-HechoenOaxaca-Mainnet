@@ -202,7 +202,152 @@ const Products = () => {
         </div>
       )}
 
-      {/* Modales (mantener igual) */}
+      {/* Modal de Editar */}
+      <Modal show={showModalEditar} onHide={() => setShowModalEditar(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Editar Producto</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedProduct && (
+            <form id="formEditar">
+              <div className="mb-3">
+                <label className="form-label fw-bold">Nombre</label>
+                <input 
+                  type="text" 
+                  name="nombre" 
+                  className="form-control" 
+                  defaultValue={selectedProduct.nombre}
+                  required
+                />
+              </div>
+              
+              <div className="mb-3">
+                <label className="form-label fw-bold">Precio (ICP)</label>
+                <input 
+                  type="number" 
+                  name="precio" 
+                  className="form-control" 
+                  step="0.01"
+                  min="0"
+                  defaultValue={selectedProduct.precioICP}
+                  required
+                />
+              </div>
+              
+              <div className="mb-3">
+                <label className="form-label fw-bold">Descripción</label>
+                <textarea 
+                  name="descripcion" 
+                  className="form-control" 
+                  rows="3"
+                  defaultValue={selectedProduct.descripcion}
+                  required
+                />
+              </div>
+              
+              <div className="mb-3">
+                <label className="form-label fw-bold">Tipo de Producto</label>
+                <select name="tipo" className="form-control" defaultValue={selectedProduct.tipo} required>
+                  <option value="">Selecciona un tipo</option>
+                  <option value="artesania">Artesanía</option>
+                  <option value="textil">Textil</option>
+                  <option value="ceramica">Dulces tradicionales</option>
+                </select>
+              </div>
+              
+              <div className="mb-3">
+                <label className="form-label fw-bold">Imágenes actuales</label>
+                <div className="d-flex flex-wrap gap-2 mb-2">
+                  {selectedProduct.imagenes && selectedProduct.imagenes.length > 0 ? (
+                    selectedProduct.imagenes.map((src, index) => (
+                      <img
+                        key={index}
+                        src={src}
+                        alt={`Actual ${index + 1}`}
+                        className="img-thumbnail"
+                        style={{ width: "80px", height: "80px", objectFit: "cover" }}
+                      />
+                    ))
+                  ) : (
+                    <span className="text-muted">No hay imágenes actuales</span>
+                  )}
+                </div>
+                
+                <label className="form-label fw-bold mt-2">Agregar nuevas imágenes (opcional)</label>
+                <input 
+                  type="file" 
+                  multiple 
+                  accept="image/*"
+                  className="form-control"
+                  onChange={(e) => setSelectedImages(Array.from(e.target.files || []))}
+                />
+                {selectedImages.length > 0 && (
+                  <small className="text-muted">
+                    {selectedImages.length} imagen(es) seleccionada(s) para agregar
+                  </small>
+                )}
+              </div>
+            </form>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => {
+            setShowModalEditar(false);
+            setSelectedImages([]);
+          }}>
+            Cancelar
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleUpdateProduct} 
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Spinner as="span" size="sm" animation="border" className="me-2" />
+                Guardando...
+              </>
+            ) : (
+              "Guardar Cambios"
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal de Eliminar */}
+      <Modal show={showModalEliminar} onHide={() => setShowModalEliminar(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirmar Eliminación</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedProduct && (
+            <div>
+              <p>¿Estás seguro de eliminar el producto?</p>
+              <p className="fw-bold text-danger">{selectedProduct.nombre}</p>
+              <p className="text-muted">Esta acción no se puede deshacer.</p>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModalEliminar(false)}>
+            Cancelar
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleDeleteProduct} 
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Spinner as="span" size="sm" animation="border" className="me-2" />
+                Eliminando...
+              </>
+            ) : (
+              "Eliminar Producto"
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

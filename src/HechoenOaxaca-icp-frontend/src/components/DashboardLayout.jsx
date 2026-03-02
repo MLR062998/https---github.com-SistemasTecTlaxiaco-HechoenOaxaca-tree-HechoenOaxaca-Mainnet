@@ -1,9 +1,9 @@
 // src/components/DashboardLayout.jsx
 import React from "react";
 import Menu from "./Menu";
-import "./DashboardLayout.scss"; // Asegúrate de crear este archivo
+import "./DashboardLayout.scss";
 
-const DashboardLayout = ({ children, title }) => {
+const DashboardLayout = ({ children }) => {
   return (
     <div className="dashboard-layout">
       {/* Menú fijo en la parte superior */}
@@ -13,11 +13,6 @@ const DashboardLayout = ({ children, title }) => {
       
       {/* Contenido principal con scroll independiente */}
       <main className="dashboard-content">
-        {title && (
-          <div className="dashboard-header">
-            <h1>{title}</h1>
-          </div>
-        )}
         <div className="dashboard-body">
           {children}
         </div>

@@ -122,25 +122,6 @@ const Home = () => {
           <p className="hero-subtitle">
             Artesanías únicas, tradición viva y calidad excepcional
           </p>
-          <div className="hero-buttons">
-            <Button 
-              variant="primary" 
-              size="lg"
-              className="hero-btn"
-              onClick={() => navigate("/productos")}
-            >
-              Explorar Colección
-            </Button>
-            <Button 
-              variant="outline-light" 
-              size="lg"
-              className="hero-btn"
-              onClick={() => navigate(isAuthenticated ? "/carrito" : "/")}
-            >
-              <FaShoppingCart className="me-2" />
-              Ver Carrito
-            </Button>
-          </div>
         </div>
       </section>
 

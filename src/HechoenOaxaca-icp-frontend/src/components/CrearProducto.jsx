@@ -184,9 +184,6 @@ const CrearProducto = () => {
                     <option value="Textil">Textil</option>
                     <option value="Artesania">Artesanía</option>
                     <option value="Dulces">Dulces tradicionales</option>
-                    <option value="Barro">Barro y cerámica</option>
-                    <option value="Madera">Madera</option>
-                    <option value="Metal">Metal</option>
                   </Form.Select>
                 </Form.Group>
 

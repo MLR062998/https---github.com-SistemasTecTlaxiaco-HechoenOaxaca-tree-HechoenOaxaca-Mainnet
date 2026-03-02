@@ -199,8 +199,6 @@ const ClienteDashboard = () => {
               <option value="Dulces">Dulces Tradicionales</option>
               <option value="Artesania">Artesanías</option>
               <option value="Textil">Textiles</option>
-              <option value="Barro">Barro y Cerámica</option>
-              <option value="Madera">Madera</option>
             </Form.Select>
           </div>
         </div>
