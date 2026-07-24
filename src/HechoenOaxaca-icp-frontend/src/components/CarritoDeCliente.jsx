@@ -5,182 +5,157 @@ import Card from "react-bootstrap/Card";
 import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
-import Tab from 'react-bootstrap/Tab';
-import Tabs from 'react-bootstrap/Tabs';
-import { FaTrash, FaShoppingCart, FaExclamationTriangle, FaHistory, FaCheckCircle } from "react-icons/fa";
+import Tab from "react-bootstrap/Tab";
+import Tabs from "react-bootstrap/Tabs";
+import Form from "react-bootstrap/Form";
+import { FaTrash, FaShoppingCart, FaExclamationTriangle, FaHistory, FaCheckCircle, FaCopy } from "react-icons/fa";
+
 import { useAuthContext } from "./authContext";
 import { useCarrito } from "../context/CarritoContext";
 
 const CarritoDeCliente = () => {
   const navigate = useNavigate();
-  const { actor, authState, isAuthenticated } = useAuthContext();
+  const { actor, authState } = useAuthContext();
   const { carrito, eliminarDelCarrito, vaciarCarrito, total, resumenCarrito } = useCarrito();
-  
+
   const [error, setError] = useState("");
   const [procesando, setProcesando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+
+  // Modales
   const [showModalEliminar, setShowModalEliminar] = useState(false);
   const [showModalVaciar, setShowModalVaciar] = useState(false);
   const [productoAEliminar, setProductoAEliminar] = useState(null);
-  const [comprasRealizadas, setComprasRealizadas] = useState([]);
-  const [cargandoCompras, setCargandoCompras] = useState(false);
+
+  // Datos del pago iniciado
+  const [pagoIniciado, setPagoIniciado] = useState(null); // { pagoId, montoTotal, accountIdCanister, memo }
+  const [showModalPago, setShowModalPago] = useState(false);
+  const [blockHeight, setBlockHeight] = useState("");
+
+  // Historial
+  const [transacciones, setTransacciones] = useState([]);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const [tabActivo, setTabActivo] = useState("carrito");
 
-  // ✅ CARGAR HISTORIAL DE COMPRAS
+  // Cargar historial de transacciones (resumenTransacciones)
   useEffect(() => {
-    const cargarComprasRealizadas = async () => {
-      if (!isAuthenticated || !actor) return;
-      
-      setCargandoCompras(true);
+    const cargarTransacciones = async () => {
+      if (!actor) return;
+      setCargandoHistorial(true);
       try {
-        console.log("🔄 Cargando historial de compras...");
-        const resultado = await actor.obtenerComprasUsuario();
-        console.log("📦 Compras obtenidas:", resultado);
-        
-        if ("ok" in resultado) {
-          setComprasRealizadas(resultado.ok || []);
-        } else {
-          console.warn("No se pudieron cargar las compras:", resultado.err);
-          setComprasRealizadas([]);
-        }
-      } catch (err) {
-        console.error("❌ Error cargando historial de compras:", err);
-        setComprasRealizadas([]);
+        const resultado = await actor.resumenTransacciones();
+        // El backend devuelve un array de transacciones directamente (no es Result)
+        setTransacciones(resultado || []);
+      } catch (e) {
+        console.error("Error cargando transacciones:", e);
+        setTransacciones([]);
       } finally {
-        setCargandoCompras(false);
+        setCargandoHistorial(false);
       }
     };
 
     if (tabActivo === "historial") {
-      cargarComprasRealizadas();
+      cargarTransacciones();
     }
-  }, [actor, isAuthenticated, tabActivo]);
+  }, [actor, tabActivo]);
 
-  // ✅ FUNCIÓN MEJORADA PARA CHECKOUT
+  // Iniciar compra (checkout)
   const procederAlCheckout = async () => {
     if (authState.status !== "authenticated" || !actor) {
-      setError("Debes iniciar sesión para proceder con el pago.");
+      setError("Debes iniciar sesión.");
       return;
     }
-
     if (carrito.length === 0) {
       setError("El carrito está vacío.");
       return;
     }
-
     setProcesando(true);
     setError("");
 
     try {
-      console.log("🛒 === INICIANDO PROCESO DE COMPRA ===");
-      
-      // 1. Verificar carrito actual
-      console.log("1. Carrito completo:", carrito);
-      console.log("2. IDs a enviar:", carrito.map(p => p.id));
-      
-      // 2. Obtener productos actuales del backend para comparar
-      console.log("3. Obteniendo productos del backend...");
-      const productosBackend = await actor.listarProductos();
-      console.log("4. Productos en backend:", productosBackend.length);
-      
-      // 3. Verificar coincidencias
-      const idsBackend = productosBackend.map(p => p.id);
-      const idsCarrito = carrito.map(p => p.id);
-      
-      const coincidencias = idsCarrito.filter(id => idsBackend.includes(id));
-      const noCoinciden = idsCarrito.filter(id => !idsBackend.includes(id));
-      
-      console.log("5. IDs que coinciden:", coincidencias.length);
-      console.log("6. IDs que NO coinciden:", noCoinciden);
-      
-      if (noCoinciden.length > 0) {
-        setError(`Error: ${noCoinciden.length} producto(s) no existen en el sistema. Por favor, actualiza la página.`);
-        setProcesando(false);
-        return;
-      }
-
-      if (coincidencias.length === 0) {
-        setError("Error: No hay productos válidos para comprar. Tu carrito puede estar desactualizado.");
-        setProcesando(false);
-        return;
-      }
-
-      // 4. Proceder con la compra solo si hay coincidencias
-      console.log("7. Iniciando compra con IDs válidos:", coincidencias);
-      const resultado = await actor.realizarCompra(coincidencias);
-      console.log("8. Respuesta del backend:", resultado);
-
+      // Llamar a iniciarCompra (sin parámetros)
+      const resultado = await actor.iniciarCompra();
       if ("ok" in resultado) {
-        console.log("✅ Compra exitosa!");
-        vaciarCarrito();
-        navigate("/checkout-confirmado", { 
-          state: { 
-            total: total,
-            productos: carrito.length,
-            detalles: resultado.ok,
-            transaccionId: resultado.ok.id || Date.now().toString()
-          } 
-        });
+        const pago = resultado.ok;
+        setPagoIniciado(pago);
+        setShowModalPago(true);
       } else {
-        const errorMsg = obtenerMensajeError(resultado.err);
-        console.error("❌ Error en la compra:", resultado.err);
-        setError(`Error al procesar la compra: ${errorMsg}`);
+        setError(traducirError(resultado.err));
       }
-    } catch (err) {
-      console.error("❌ Error excepcional en la compra:", err);
-      setError(`Error de conexión: ${err.message || "Intenta nuevamente más tarde."}`);
+    } catch (e) {
+      console.error(e);
+      setError("Error de conexión con la blockchain.");
     } finally {
       setProcesando(false);
     }
   };
 
-  // ✅ FUNCIÓN PARA TRADUCIR ERRORES
-  const obtenerMensajeError = (error) => {
-    if (!error) return "Error desconocido";
-    
-    if (typeof error === 'object') {
-      if ('ErrorValidacion' in error) {
-        return `Error de validación: ${error.ErrorValidacion}`;
-      }
-      if ('ErrorLedger' in error) {
-        return `Error de pago: ${error.ErrorLedger.mensaje || error.ErrorLedger.codigo}`;
-      }
-      if ('ProductoNoExiste' in error) {
-        return "Uno o más productos no existen o no están disponibles";
-      }
-      if ('SaldoInsuficiente' in error) {
-        return "Saldo insuficiente para completar la compra";
-      }
-      if ('PermisoDenegado' in error) {
-        return "No tienes permisos para realizar esta compra";
-      }
-      if ('UsuarioNoExiste' in error) {
-        return "Debes estar registrado para realizar compras";
-      }
+  // Confirmar pago (después de que el usuario pagó desde su wallet)
+  const confirmarPago = async () => {
+    if (!pagoIniciado) return;
+    const height = Number(blockHeight);
+    if (isNaN(height) || height <= 0) {
+      setError("Ingresa un número de bloque válido.");
+      return;
     }
-    
-    if (typeof error === 'string') {
-      return error;
+    setConfirmando(true);
+    setError("");
+    try {
+      const resultado = await actor.confirmarPago(pagoIniciado.pagoId, BigInt(height));
+      if ("ok" in resultado) {
+        // Éxito: vaciar carrito local y navegar
+        vaciarCarrito();
+        setShowModalPago(false);
+        setPagoIniciado(null);
+        setBlockHeight("");
+        navigate("/checkout-confirmado", {
+          state: {
+            total,
+            productos: carrito.length,
+            detalles: resultado.ok
+          }
+        });
+      } else {
+        setError(traducirError(resultado.err));
+      }
+    } catch (e) {
+      console.error(e);
+      setError("Error confirmando pago.");
+    } finally {
+      setConfirmando(false);
     }
-    
-    return JSON.stringify(error);
   };
 
-  // ✅ FUNCIONES DE CONFIRMACIÓN
+  const traducirError = (err) => {
+    if (!err) return "Error desconocido";
+    if (typeof err === "object") {
+      if ("SaldoInsuficiente" in err) return "Saldo insuficiente.";
+      if ("ProductoNoExiste" in err) return "Producto no disponible.";
+      if ("StockInsuficiente" in err) return "No hay suficiente stock.";
+      if ("UsuarioNoExiste" in err) return "Debes registrarte.";
+      if ("PermisoDenegado" in err) return "Permiso denegado.";
+      if ("ErrorValidacion" in err) return err.ErrorValidacion;
+      if ("ErrorInterno" in err) return "Error interno del sistema.";
+    }
+    return JSON.stringify(err);
+  };
+
+  // Copiar texto al portapapeles
+  const copiarAlPortapapeles = (texto) => {
+    navigator.clipboard.writeText(texto);
+    alert("Copiado al portapapeles");
+  };
+
   const confirmarEliminarProducto = (producto) => {
     setProductoAEliminar(producto);
     setShowModalEliminar(true);
   };
 
   const ejecutarEliminacion = () => {
-    if (productoAEliminar) {
-      eliminarDelCarrito(productoAEliminar.id);
-      setShowModalEliminar(false);
-      setProductoAEliminar(null);
-    }
-  };
-
-  const confirmarVaciarCarrito = () => {
-    setShowModalVaciar(true);
+    if (!productoAEliminar) return;
+    eliminarDelCarrito(productoAEliminar.id);
+    setProductoAEliminar(null);
+    setShowModalEliminar(false);
   };
 
   const ejecutarVaciarCarrito = () => {
@@ -188,306 +163,218 @@ const CarritoDeCliente = () => {
     setShowModalVaciar(false);
   };
 
-  // ✅ FUNCIÓN PARA FORMATEAR FECHA
-  const formatearFecha = (timestamp) => {
-    if (!timestamp) return "Fecha no disponible";
-    try {
-      const fecha = new Date(Number(timestamp) / 1_000_000);
-      return fecha.toLocaleDateString('es-MX', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      return "Fecha inválida";
-    }
-  };
-
-  // ✅ FUNCIÓN SEGURA PARA PRECIOS
   const formatearPrecio = (producto) => {
     try {
-      const precioICP = producto.precioICP || (Number(producto.precio || 0) / 100_000_000);
-      return precioICP.toFixed(2);
-    } catch (error) {
+      const precio = Number(producto.precio || 0) / 100000000;
+      return precio.toFixed(2);
+    } catch {
       return "0.00";
     }
   };
 
-  // ✅ COMPONENTE DE CARRITO
-  const CarritoContent = () => (
-    <div className="carrito-content">
-      <div className="botones-superiores d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <Button 
-            variant="primary" 
-            onClick={() => navigate("/cliente-dashboard")}
-            className="me-2"
-          >
-            <FaShoppingCart className="me-2" />
-            Seguir Comprando
-          </Button>
-        </div>
-        
-        {carrito.length > 0 && (
-          <Button variant="outline-danger" onClick={confirmarVaciarCarrito}>
-            🗑️ Vaciar Carrito
-          </Button>
-        )}
-      </div>
+  const formatearFecha = (timestamp) => {
+    try {
+      const fecha = new Date(Number(timestamp) / 1000000);
+      return fecha.toLocaleDateString("es-MX", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch {
+      return "Fecha inválida";
+    }
+  };
 
-      {error && (
-        <Alert variant="danger" className="text-center">
-          <FaExclamationTriangle className="me-2" />
-          {error}
-        </Alert>
-      )}
-
-      {carrito.length === 0 ? (
-        <div className="text-center p-5 border rounded bg-light">
-          <h4 className="text-muted mb-3">Tu carrito está vacío</h4>
-          <p className="text-muted mb-4">No hay productos en tu carrito de compras</p>
-          <Button variant="primary" onClick={() => navigate("/cliente-dashboard")}>
-            <FaShoppingCart className="me-2" />
-            Explorar Productos
-          </Button>
-        </div>
-      ) : (
-        <div className="productos-en-carrito">
-          {carrito.map((producto) => (
-            <Card key={producto.id} className="mb-3 shadow-sm">
-              <Card.Body className="d-flex justify-content-between align-items-center">
-                <div className="d-flex align-items-center gap-3 flex-grow-1">
-                  {producto.imagenes?.[0] && (
-                    <img
-                      src={producto.imagenes[0]}
-                      alt={producto.nombre}
-                      style={{ 
-                        width: "80px", 
-                        height: "80px", 
-                        objectFit: "cover", 
-                        borderRadius: "8px" 
-                      }}
-                      className="shadow-sm"
-                    />
-                  )}
-                  
-                  <div className="flex-grow-1">
-                    <Card.Title className="h6 mb-1 text-primary">
-                      {producto.nombre}
-                    </Card.Title>
-                    <Card.Text className="mb-1 text-muted small">
-                      {producto.descripcion?.length > 60 
-                        ? `${producto.descripcion.substring(0, 60)}...` 
-                        : producto.descripcion}
-                    </Card.Text>
-                    <Card.Text className="mb-0 fw-bold text-success">
-                      💰 ICP {formatearPrecio(producto)}
-                    </Card.Text>
-                  </div>
-                  
-                  <Button 
-                    variant="outline-danger" 
-                    size="sm"
-                    onClick={() => confirmarEliminarProducto(producto)}
-                    title="Eliminar del carrito"
-                  >
-                    <FaTrash />
-                  </Button>
-                </div>
-              </Card.Body>
-            </Card>
-          ))}
-          
-          <Card className="mt-4 border-success shadow">
-            <Card.Body className="text-center">
-              <h4 className="text-success mb-3">📋 Resumen de tu Pedido</h4>
-              <div className="row justify-content-center">
-                <div className="col-md-6">
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Productos en carrito:</span>
-                    <strong>{resumenCarrito.totalItems}</strong>
-                  </div>
-                  <div className="d-flex justify-content-between mb-3">
-                    <span>Total a pagar:</span>
-                    <strong className="text-success h5">ICP {total.toFixed(2)}</strong>
-                  </div>
-                  
-                  <Button 
-                    variant="success" 
-                    size="lg" 
-                    onClick={procederAlCheckout}
-                    disabled={procesando}
-                    className="w-100 mt-3 py-2"
-                  >
-                    {procesando ? (
-                      <>
-                        <Spinner animation="border" size="sm" className="me-2" />
-                        Procesando tu compra...
-                      </>
-                    ) : (
-                      <>
-                        💳 Proceder al Pago
-                      </>
-                    )}
-                  </Button>
-                  
-                  {procesando && (
-                    <Alert variant="info" className="mt-2 small">
-                      ⏳ Procesando transacción en la blockchain... Esto puede tomar unos segundos.
-                    </Alert>
-                  )}
-                </div>
-              </div>
-            </Card.Body>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
-
-  // ✅ COMPONENTE DE HISTORIAL DE COMPRAS
-  const HistorialComprasContent = () => (
-    <div className="historial-content">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h4 className="mb-0">📦 Mis Compras Realizadas</h4>
-        <Button 
-          variant="outline-primary" 
-          onClick={() => setTabActivo("carrito")}
-        >
-          🛒 Volver al Carrito
-        </Button>
-      </div>
-
-      {cargandoCompras ? (
-        <div className="text-center p-5">
-          <Spinner animation="border" variant="primary" />
-          <p className="mt-2">Cargando tu historial de compras...</p>
-        </div>
-      ) : comprasRealizadas.length === 0 ? (
-        <div className="text-center p-5 border rounded bg-light">
-          <FaHistory className="display-4 text-muted mb-3" />
-          <h4 className="text-muted mb-3">Aún no tienes compras</h4>
-          <p className="text-muted mb-4">Tus compras aparecerán aquí una vez que realices tu primera compra</p>
-          <Button variant="primary" onClick={() => setTabActivo("carrito")}>
-            <FaShoppingCart className="me-2" />
-            Ir a Comprar
-          </Button>
-        </div>
-      ) : (
-        <div className="compras-list">
-          {comprasRealizadas.map((compra, index) => (
-            <Card key={compra.id || index} className="mb-4 shadow-sm border-success">
-              <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
-                <div>
-                  <FaCheckCircle className="me-2" />
-                  <strong>Compra #{comprasRealizadas.length - index}</strong>
-                </div>
-                <small>{formatearFecha(compra.fecha)}</small>
-              </Card.Header>
-              <Card.Body>
-                <div className="row">
-                  <div className="col-md-6">
-                    <h6>📋 Detalles de la Compra:</h6>
-                    <p className="mb-1"><strong>ID de Transacción:</strong> {compra.id || "N/A"}</p>
-                    <p className="mb-1"><strong>Total Pagado:</strong> 
-                      <span className="text-success fw-bold"> ICP {compra.total ? (Number(compra.total) / 100_000_000).toFixed(2) : "0.00"}</span>
-                    </p>
-                    <p className="mb-0"><strong>Estado:</strong> 
-                      <span className="badge bg-success ms-2">Completada</span>
-                    </p>
-                  </div>
-                  <div className="col-md-6">
-                    <h6>🛍️ Productos Comprados:</h6>
-                    {compra.productos && compra.productos.length > 0 ? (
-                      <ul className="list-unstyled">
-                        {compra.productos.map((producto, idx) => (
-                          <li key={idx} className="mb-1">
-                            • {producto.nombre || "Producto"} - 
-                            <span className="text-success"> ICP {producto.precio ? (Number(producto.precio) / 100_000_000).toFixed(2) : "0.00"}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-muted">No hay detalles de productos disponibles</p>
-                    )}
-                  </div>
-                </div>
-              </Card.Body>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  const formatearMonto = (montoE8s) => {
+    return (Number(montoE8s) / 100000000).toFixed(2);
+  };
 
   return (
-    <div className="carrito-de-cliente container mt-4">
-      <h2 className="text-center mb-4">🛒 Mi Carrito de Compras</h2>
+    <div className="container mt-4">
+      <h2 className="text-center mb-4">🛒 Mi Carrito</h2>
 
       <Tabs
         activeKey={tabActivo}
-        onSelect={(tab) => setTabActivo(tab)}
+        onSelect={(k) => setTabActivo(k)}
         className="mb-4"
         justify
       >
-        <Tab eventKey="carrito" title={
-          <span>
-            🛒 Carrito Actual {carrito.length > 0 && `(${carrito.length})`}
-          </span>
-        }>
-          <CarritoContent />
+        <Tab eventKey="carrito" title={`Carrito (${carrito.length})`}>
+          {error && (
+            <Alert variant="danger">
+              <FaExclamationTriangle className="me-2" />
+              {error}
+            </Alert>
+          )}
+
+          {carrito.length === 0 ? (
+            <div className="text-center p-5 border rounded">
+              <h4>Tu carrito está vacío</h4>
+              <Button onClick={() => navigate("/cliente-dashboard")}>
+                Explorar productos
+              </Button>
+            </div>
+          ) : (
+            <>
+              {carrito.map((producto) => (
+                <Card key={producto.id} className="mb-3">
+                  <Card.Body className="d-flex justify-content-between">
+                    <div>
+                      <h6>{producto.nombre}</h6>
+                      <p className="text-success">
+                        ICP {formatearPrecio(producto)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline-danger"
+                      onClick={() => confirmarEliminarProducto(producto)}
+                    >
+                      <FaTrash />
+                    </Button>
+                  </Card.Body>
+                </Card>
+              ))}
+
+              <Card className="mt-4 border-success">
+                <Card.Body className="text-center">
+                  <h4>Total ICP {total.toFixed(2)}</h4>
+                  <Button
+                    variant="success"
+                    size="lg"
+                    disabled={procesando}
+                    onClick={procederAlCheckout}
+                  >
+                    {procesando ? <Spinner size="sm" /> : "Proceder al pago"}
+                  </Button>
+                </Card.Body>
+              </Card>
+            </>
+          )}
         </Tab>
-        
-        <Tab eventKey="historial" title={
-          <span>
-            📦 Historial de Compras {comprasRealizadas.length > 0 && `(${comprasRealizadas.length})`}
-          </span>
-        }>
-          <HistorialComprasContent />
+
+        <Tab eventKey="historial" title={`Historial (${transacciones.length})`}>
+          {cargandoHistorial ? (
+            <div className="text-center p-5">
+              <Spinner />
+            </div>
+          ) : transacciones.length === 0 ? (
+            <div className="text-center p-5 border rounded">
+              <h4>No hay transacciones aún</h4>
+            </div>
+          ) : (
+            transacciones.map((tx) => (
+              <Card key={tx.id} className="mb-3">
+                <Card.Header>
+                  <div className="d-flex justify-content-between">
+                    <span>
+                      <FaHistory className="me-2" />
+                      {tx.estado === "Pagado" ? (
+                        <FaCheckCircle className="text-success me-2" />
+                      ) : null}
+                      {tx.estado || "Transacción"}
+                    </span>
+                    <small>{formatearFecha(tx.fecha)}</small>
+                  </div>
+                </Card.Header>
+                <Card.Body>
+                  <p>
+                    <strong>Monto:</strong> ICP {formatearMonto(tx.monto)}
+                  </p>
+                  <p>
+                    <strong>Vendedor:</strong> {tx.vendedor.toString().slice(0, 8)}...
+                  </p>
+                  <p>
+                    <strong>Productos:</strong> {tx.productoIds?.length || 1} artículo(s)
+                  </p>
+                  {tx.blockHeight && (
+                    <p>
+                      <strong>Bloque:</strong> {tx.blockHeight.toString()}
+                    </p>
+                  )}
+                </Card.Body>
+              </Card>
+            ))
+          )}
         </Tab>
       </Tabs>
 
-      {/* Modal de confirmación para eliminar producto */}
-      <Modal show={showModalEliminar} onHide={() => setShowModalEliminar(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>🗑️ Confirmar Eliminación</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>¿Estás seguro de que deseas eliminar el producto <strong>"{productoAEliminar?.nombre}"</strong> de tu carrito?</p>
-          <p className="text-muted small">Esta acción no se puede deshacer.</p>
-        </Modal.Body>
+      {/* Modal para eliminar producto */}
+      <Modal show={showModalEliminar} onHide={() => setShowModalEliminar(false)}>
+        <Modal.Header closeButton>Confirmar eliminación</Modal.Header>
+        <Modal.Body>¿Eliminar producto del carrito?</Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModalEliminar(false)}>
             Cancelar
           </Button>
           <Button variant="danger" onClick={ejecutarEliminacion}>
-            <FaTrash className="me-2" />
-            Sí, Eliminar
+            Eliminar
           </Button>
         </Modal.Footer>
       </Modal>
 
-      {/* Modal de confirmación para vaciar carrito */}
-      <Modal show={showModalVaciar} onHide={() => setShowModalVaciar(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>🚮 Vaciar Carrito</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>¿Estás seguro de que deseas vaciar completamente tu carrito?</p>
-          <p className="text-warning">
-            <strong>Se eliminarán {carrito.length} producto(s) de tu carrito.</strong>
-          </p>
-          <p className="text-muted small">Esta acción no se puede deshacer.</p>
-        </Modal.Body>
+      {/* Modal para vaciar carrito */}
+      <Modal show={showModalVaciar} onHide={() => setShowModalVaciar(false)}>
+        <Modal.Header closeButton>Vaciar carrito</Modal.Header>
+        <Modal.Body>¿Seguro que deseas vaciar el carrito?</Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModalVaciar(false)}>
             Cancelar
           </Button>
           <Button variant="danger" onClick={ejecutarVaciarCarrito}>
-            <FaTrash className="me-2" />
-            Sí, Vaciar Carrito
+            Vaciar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal para mostrar datos del pago y confirmar */}
+      <Modal show={showModalPago} onHide={() => setShowModalPago(false)} size="lg">
+        <Modal.Header closeButton>Pago iniciado</Modal.Header>
+        <Modal.Body>
+          <p>Realiza la transferencia desde tu wallet:</p>
+          <div className="bg-light p-3 rounded mb-3">
+            <p><strong>Cuenta del canister:</strong></p>
+            <div className="d-flex align-items-center">
+              <code className="flex-grow-1 text-break">{pagoIniciado?.accountIdCanister}</code>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                className="ms-2"
+                onClick={() => copiarAlPortapapeles(pagoIniciado?.accountIdCanister)}
+              >
+                <FaCopy />
+              </Button>
+            </div>
+          </div>
+          <div className="bg-light p-3 rounded mb-3">
+            <p><strong>Monto total:</strong> ICP {formatearMonto(pagoIniciado?.montoTotal)}</p>
+            <p><strong>Memo:</strong> {pagoIniciado?.memo}</p>
+          </div>
+          <p className="text-muted">
+            Después de enviar los ICP, ingresa el número de bloque (block height) de la transacción:
+          </p>
+          <Form.Group className="mb-3">
+            <Form.Label>Block Height</Form.Label>
+            <Form.Control
+              type="number"
+              placeholder="Ejemplo: 12345678"
+              value={blockHeight}
+              onChange={(e) => setBlockHeight(e.target.value)}
+            />
+          </Form.Group>
+          {error && <Alert variant="danger">{error}</Alert>}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModalPago(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="success"
+            onClick={confirmarPago}
+            disabled={confirmando || !blockHeight}
+          >
+            {confirmando ? <Spinner size="sm" /> : "Confirmar pago"}
           </Button>
         </Modal.Footer>
       </Modal>
