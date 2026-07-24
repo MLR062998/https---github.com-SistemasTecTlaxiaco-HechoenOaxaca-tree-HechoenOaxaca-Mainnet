@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Button, Modal, Alert, Spinner } from "react-bootstrap";
+import { Button, Modal, Alert, Spinner, Badge } from "react-bootstrap";
 import { useAuthContext } from "./authContext";
 import { processProductsList } from "../utils/imageUtils";
+import { FaShieldAlt } from "react-icons/fa";
 
 const Products = () => {
-  const { actor, principalId, rol } = useAuthContext();
+  const { actor, principal, rol } = useAuthContext();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -14,14 +15,15 @@ const Products = () => {
   const [selectedImages, setSelectedImages] = useState([]);
 
   const fetchProducts = async () => {
-    if (!actor || !principalId || rol !== "Artesano") return;
+    if (!actor || !principal || rol !== "Artesano") return;
 
     setLoading(true);
     setError("");
     try {
-      const result = await actor.listarProductosPorArtesano();
-      
-      // ✅ CORREGIDO: Procesar imágenes correctamente
+      console.log("📌 Llamando a listarProductosPorArtesano con principal (objeto):", principal);
+      console.log("📌 principal.toText():", principal.toText());
+
+      const result = await actor.listarProductosPorArtesano(principal);
       const processed = processProductsList(result);
       setProducts(processed);
     } catch (err) {
@@ -34,7 +36,7 @@ const Products = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [actor, principalId, rol]);
+  }, [actor, principal, rol]);
 
   const handleUpdateProduct = async () => {
     if (!selectedProduct) return;
@@ -47,6 +49,15 @@ const Products = () => {
       const precio = parseFloat(form.precio.value);
       const descripcion = form.descripcion.value;
       const tipo = form.tipo.value;
+      const stock = parseInt(form.stock.value, 10);
+      const firma = form.firma.value.trim() || null;
+      const certificado = form.certificado.value.trim() || null;
+
+      if (isNaN(stock) || stock < 0) {
+        setError("El stock debe ser un número válido");
+        setLoading(false);
+        return;
+      }
 
       const precioNat64 = BigInt(Math.floor(precio * 100_000_000));
 
@@ -60,13 +71,17 @@ const Products = () => {
         );
       }
 
+      // ✅ Ahora enviamos TODOS los parámetros en el orden correcto
       const result = await actor.actualizarProducto(
         selectedProduct.id,
         nombre,
         precioNat64,
         descripcion,
         tipo,
-        imageBlobs.length > 0 ? imageBlobs : selectedProduct.imagenes
+        imageBlobs.length > 0 ? imageBlobs : selectedProduct.imagenes,
+        firma ? [firma] : [],      // ?Text → null = []
+        certificado ? [certificado] : [],
+        BigInt(stock)
       );
 
       if ("ok" in result) {
@@ -133,76 +148,92 @@ const Products = () => {
               <tr>
                 <th>Nombre</th>
                 <th>Precio</th>
+                <th>Stock</th>
                 <th>Descripción</th>
                 <th>Imágenes</th>
+                <th>Certificado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
-                <tr key={product.id}>
-                  <td className="align-middle">{product.nombre}</td>
-                  <td className="align-middle">ICP {product.precioICP?.toFixed(2)}</td>
-                  <td className="align-middle">
-                    {product.descripcion.length > 50 
-                      ? `${product.descripcion.substring(0, 50)}...` 
-                      : product.descripcion}
-                  </td>
-                  <td className="align-middle">
-                    <div className="d-flex flex-wrap gap-2">
-                      {product.imagenes.map((src, index) => (
-                        <img
-                          key={index}
-                          src={src}
-                          alt={`Vista ${index + 1}`}
-                          className="img-thumbnail"
-                          style={{ 
-                            width: "60px", 
-                            height: "60px", 
-                            objectFit: "cover" 
-                          }}
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
-                        />
-                      ))}
-                      {product.imagenes.length === 0 && (
-                        <span className="text-muted">Sin imágenes</span>
+              {products.map((product) => {
+                const tieneCertificado = product.hash && product.firma;
+                return (
+                  <tr key={product.id}>
+                    <td className="align-middle">{product.nombre}</td>
+                    <td className="align-middle">ICP {product.precioICP?.toFixed(2)}</td>
+                    <td className="align-middle">{product.stock || 0}</td>
+                    <td className="align-middle">
+                      {product.descripcion.length > 50 
+                        ? `${product.descripcion.substring(0, 50)}...` 
+                        : product.descripcion}
+                    </td>
+                    <td className="align-middle">
+                      <div className="d-flex flex-wrap gap-2">
+                        {product.imagenes.map((src, index) => (
+                          <img
+                            key={index}
+                            src={src}
+                            alt={`Vista ${index + 1}`}
+                            className="img-thumbnail"
+                            style={{ 
+                              width: "60px", 
+                              height: "60px", 
+                              objectFit: "cover" 
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        ))}
+                        {product.imagenes.length === 0 && (
+                          <span className="text-muted">Sin imágenes</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="align-middle text-center">
+                      {tieneCertificado ? (
+                        <Badge bg="success" className="p-2">
+                          <FaShieldAlt className="me-1" />
+                          Certificado
+                        </Badge>
+                      ) : (
+                        <span className="text-muted">—</span>
                       )}
-                    </div>
-                  </td>
-                  <td className="align-middle">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="me-2 mb-1"
-                      onClick={() => {
-                        setSelectedProduct(product);
-                        setShowModalEditar(true);
-                      }}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      className="mb-1"
-                      onClick={() => {
-                        setSelectedProduct(product);
-                        setShowModalEliminar(true);
-                      }}
-                    >
-                      Eliminar
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="align-middle">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="me-2 mb-1"
+                        onClick={() => {
+                          setSelectedProduct(product);
+                          setShowModalEditar(true);
+                        }}
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        className="mb-1"
+                        onClick={() => {
+                          setSelectedProduct(product);
+                          setShowModalEliminar(true);
+                        }}
+                      >
+                        Eliminar
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Modal de Editar */}
+      {/* Modal de Editar - VERSIÓN COMPLETA */}
       <Modal show={showModalEditar} onHide={() => setShowModalEditar(false)} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>Editar Producto</Modal.Title>
@@ -233,6 +264,18 @@ const Products = () => {
                   required
                 />
               </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-bold">Stock disponible</label>
+                <input 
+                  type="number" 
+                  name="stock" 
+                  className="form-control" 
+                  min="0"
+                  defaultValue={selectedProduct.stock || 0}
+                  required
+                />
+              </div>
               
               <div className="mb-3">
                 <label className="form-label fw-bold">Descripción</label>
@@ -249,10 +292,35 @@ const Products = () => {
                 <label className="form-label fw-bold">Tipo de Producto</label>
                 <select name="tipo" className="form-control" defaultValue={selectedProduct.tipo} required>
                   <option value="">Selecciona un tipo</option>
-                  <option value="artesania">Artesanía</option>
-                  <option value="textil">Textil</option>
-                  <option value="ceramica">Dulces tradicionales</option>
+                  <option value="Textil">Textil</option>
+                  <option value="Artesania">Artesanía</option>
+                  <option value="Dulces">Dulces tradicionales</option>
+                  <option value="Ceramica">Cerámica</option>
+                  <option value="Joyeria">Joyería</option>
                 </select>
+              </div>
+
+              {/* NUEVOS CAMPOS: Firma y Certificado */}
+              <div className="mb-3">
+                <label className="form-label fw-bold">Firma digital (opcional)</label>
+                <textarea 
+                  name="firma" 
+                  className="form-control" 
+                  rows="2"
+                  placeholder="Hash de autenticidad o firma del artesano"
+                  defaultValue={selectedProduct.firma || ""}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-bold">Certificado (opcional)</label>
+                <textarea 
+                  name="certificado" 
+                  className="form-control" 
+                  rows="2"
+                  placeholder="Número de certificado o texto de autenticidad"
+                  defaultValue={selectedProduct.certificado || ""}
+                />
               </div>
               
               <div className="mb-3">

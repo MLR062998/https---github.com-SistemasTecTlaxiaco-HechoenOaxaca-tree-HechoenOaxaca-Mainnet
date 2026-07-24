@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import { Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import CrearProducto from "./CrearProducto";
 import Products from "./Products";
-import Wallet from "./Wallet";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
@@ -11,7 +10,6 @@ import DashboardLayout from "./DashboardLayout";
 import { useAuthContext } from "./authContext";
 import "../artesano.scss";
 
-// IMPORTAR LA MISMA FUNCIÓN QUE USA PRODUCTS.JSX
 import { processProductsList } from "../utils/imageUtils";
 
 // ========= COMPONENTE ProductosPreview =========
@@ -148,16 +146,6 @@ const AccionesRapidas = ({ onNavigate }) => (
         <Button 
           variant="outline-warning" 
           className="accion-rapida-btn w-100"
-          onClick={() => onNavigate("wallet")}
-        >
-          <div className="accion-rapida-icon">💰</div>
-          <div className="accion-rapida-text">Wallet</div>
-        </Button>
-      </div>
-      <div className="col-6 col-md-3">
-        <Button 
-          variant="outline-info" 
-          className="accion-rapida-btn w-100"
           onClick={() => onNavigate("notificaciones")}
         >
           <div className="accion-rapida-icon">🔔</div>
@@ -182,7 +170,8 @@ const Artesano = () => {
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const { actor, principalId, isLoading, isAuthenticated } = useAuthContext();
+  // 🔥 CAMBIO: extraemos 'principal' (objeto) en lugar de 'principalId'
+  const { actor, principal, isLoading, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -193,7 +182,7 @@ const Artesano = () => {
   // Cargar perfil
   useEffect(() => {
     const fetchPerfil = async () => {
-      if (!actor || !principalId) return;
+      if (!actor || !principal) return; // ahora usamos principal (objeto)
       try {
         const res = await actor.obtenerUsuario();
         if ("ok" in res) {
@@ -213,15 +202,19 @@ const Artesano = () => {
     if (isAuthenticated) {
       fetchPerfil();
     }
-  }, [actor, principalId, isAuthenticated]);
+  }, [actor, principal, isAuthenticated]);
 
   // Cargar productos con el mismo procesamiento que Products.jsx
+  // ✅ CORREGIDO: Se pasa el objeto principal (no el string)
   useEffect(() => {
     const fetchProductos = async () => {
-      if (!actor || !principalId || !isAuthenticated) return;
+      if (!actor || !principal || !isAuthenticated) return;
       
       try {
-        const result = await actor.listarProductosPorArtesano();
+        console.log("📌 Llamando a listarProductosPorArtesano con principal (objeto):", principal);
+        console.log("📌 principal.toText():", principal.toText());
+
+        const result = await actor.listarProductosPorArtesano(principal);
         console.log("Productos desde backend (Artesano):", result);
         
         const productosData = processProductsList(result);
@@ -237,7 +230,7 @@ const Artesano = () => {
     if (isDashboard) {
       fetchProductos();
     }
-  }, [actor, principalId, isAuthenticated, isDashboard]);
+  }, [actor, principal, isAuthenticated, isDashboard]);
 
   // Redirección si no está autenticado
   useEffect(() => {
@@ -255,8 +248,17 @@ const Artesano = () => {
     if (!actor) return;
     try {
       console.log("Guardando cambios:", editFormData);
-      setShowEditModal(false);
-      setPerfil({ ...perfil, ...editFormData });
+      const result = await actor.actualizarPerfil(
+        editFormData.nombreCompleto,
+        editFormData.lugarOrigen,
+        editFormData.telefono
+      );
+      if ("ok" in result) {
+        setPerfil({ ...perfil, ...editFormData });
+        setShowEditModal(false);
+      } else {
+        console.error("Error al actualizar perfil:", result.err);
+      }
     } catch (error) {
       console.error("❌ Error al actualizar perfil:", error);
     }
@@ -404,7 +406,6 @@ const Artesano = () => {
           {/* Subrutas */}
           <Route path="nuevo-producto" element={<CrearProducto />} />
           <Route path="mis-productos" element={<Products />} />
-          <Route path="wallet" element={<Wallet />} />
           <Route path="notificaciones" element={
             <div className="text-center py-5">
               <span className="fs-1">🔧</span>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HechoenOaxacaIcpBackend } from "../../../declarations/HechoenOaxaca-icp-backend";
+import { HechoenOaxacaIcpBackend } from "../../../declarations/HechoenOaxaca-icp-backend-v2";
 import Table from "react-bootstrap/Table";
 import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";

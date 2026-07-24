@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
@@ -7,20 +7,24 @@ import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import Tab from "react-bootstrap/Tab";
 import Tabs from "react-bootstrap/Tabs";
-import Form from "react-bootstrap/Form";
-import { FaTrash, FaShoppingCart, FaExclamationTriangle, FaHistory, FaCheckCircle, FaCopy } from "react-icons/fa";
+import { FaTrash, FaExclamationTriangle, FaHistory, FaCheckCircle } from "react-icons/fa";
 
 import { useAuthContext } from "./authContext";
-import { useCarrito } from "../context/CarritoContext";
+import PagoQR from "./PagoQR"; // ← Importa tu componente QR
 
 const CarritoDeCliente = () => {
   const navigate = useNavigate();
   const { actor, authState } = useAuthContext();
-  const { carrito, eliminarDelCarrito, vaciarCarrito, total, resumenCarrito } = useCarrito();
 
+  // Estados para carrito proveniente del backend
+  const [carritoItems, setCarritoItems] = useState([]);
+  const [productosCarrito, setProductosCarrito] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [cargandoCarrito, setCargandoCarrito] = useState(false);
+
+  // Estados para errores, procesamiento, modales
   const [error, setError] = useState("");
   const [procesando, setProcesando] = useState(false);
-  const [confirmando, setConfirmando] = useState(false);
 
   // Modales
   const [showModalEliminar, setShowModalEliminar] = useState(false);
@@ -28,52 +32,98 @@ const CarritoDeCliente = () => {
   const [productoAEliminar, setProductoAEliminar] = useState(null);
 
   // Datos del pago iniciado
-  const [pagoIniciado, setPagoIniciado] = useState(null); // { pagoId, montoTotal, accountIdCanister, memo }
+  const [pagoIniciado, setPagoIniciado] = useState(null);
   const [showModalPago, setShowModalPago] = useState(false);
-  const [blockHeight, setBlockHeight] = useState("");
 
   // Historial
   const [transacciones, setTransacciones] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const [tabActivo, setTabActivo] = useState("carrito");
 
-  // Cargar historial de transacciones (resumenTransacciones)
-  useEffect(() => {
-    const cargarTransacciones = async () => {
-      if (!actor) return;
-      setCargandoHistorial(true);
-      try {
-        const resultado = await actor.resumenTransacciones();
-        // El backend devuelve un array de transacciones directamente (no es Result)
-        setTransacciones(resultado || []);
-      } catch (e) {
-        console.error("Error cargando transacciones:", e);
-        setTransacciones([]);
-      } finally {
-        setCargandoHistorial(false);
-      }
-    };
-
-    if (tabActivo === "historial") {
-      cargarTransacciones();
+  // ============================================================
+  // Función para cargar el carrito real desde el backend
+  // ============================================================
+  const cargarCarrito = useCallback(async () => {
+    if (!actor) return;
+    setCargandoCarrito(true);
+    try {
+      const items = await actor.verCarrito();
+      const productos = await actor.listarProductos();
+      const productosEnCarrito = items
+        .map((item) => {
+          const producto = productos.find((p) => p.id === item.productoId);
+          if (!producto) return null;
+          return {
+            ...producto,
+            precioSnapshot: item.precioSnapshot,
+          };
+        })
+        .filter(Boolean);
+      const totalE8s = productosEnCarrito.reduce((acc, p) => acc + Number(p.precioSnapshot), 0);
+      const totalICP = totalE8s / 100_000_000;
+      setCarritoItems(items);
+      setProductosCarrito(productosEnCarrito);
+      setTotal(totalICP);
+    } catch (err) {
+      console.error("Error al cargar carrito:", err);
+      setError("No se pudo cargar el carrito. Intenta más tarde.");
+    } finally {
+      setCargandoCarrito(false);
     }
-  }, [actor, tabActivo]);
+  }, [actor]);
 
-  // Iniciar compra (checkout)
+  useEffect(() => {
+    cargarCarrito();
+  }, [cargarCarrito]);
+
+  // ============================================================
+  // Eliminar producto del carrito
+  // ============================================================
+  const ejecutarEliminacion = async () => {
+    if (!productoAEliminar) return;
+    setProcesando(true);
+    try {
+      await actor.quitarDelCarrito(productoAEliminar.id);
+      await cargarCarrito();
+      setProductoAEliminar(null);
+      setShowModalEliminar(false);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo eliminar el producto.");
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  const ejecutarVaciarCarrito = async () => {
+    setProcesando(true);
+    try {
+      await actor.vaciarCarrito();
+      await cargarCarrito();
+      setShowModalVaciar(false);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo vaciar el carrito.");
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  // ============================================================
+  // Iniciar compra (checkout) -> muestra QR
+  // ============================================================
   const procederAlCheckout = async () => {
     if (authState.status !== "authenticated" || !actor) {
       setError("Debes iniciar sesión.");
       return;
     }
-    if (carrito.length === 0) {
+    if (productosCarrito.length === 0) {
       setError("El carrito está vacío.");
       return;
     }
     setProcesando(true);
     setError("");
-
     try {
-      // Llamar a iniciarCompra (sin parámetros)
       const resultado = await actor.iniciarCompra();
       if ("ok" in resultado) {
         const pago = resultado.ok;
@@ -90,42 +140,28 @@ const CarritoDeCliente = () => {
     }
   };
 
-  // Confirmar pago (después de que el usuario pagó desde su wallet)
-  const confirmarPago = async () => {
-    if (!pagoIniciado) return;
-    const height = Number(blockHeight);
-    if (isNaN(height) || height <= 0) {
-      setError("Ingresa un número de bloque válido.");
-      return;
-    }
-    setConfirmando(true);
-    setError("");
-    try {
-      const resultado = await actor.confirmarPago(pagoIniciado.pagoId, BigInt(height));
-      if ("ok" in resultado) {
-        // Éxito: vaciar carrito local y navegar
-        vaciarCarrito();
-        setShowModalPago(false);
-        setPagoIniciado(null);
-        setBlockHeight("");
-        navigate("/checkout-confirmado", {
-          state: {
-            total,
-            productos: carrito.length,
-            detalles: resultado.ok
-          }
-        });
-      } else {
-        setError(traducirError(resultado.err));
-      }
-    } catch (e) {
-      console.error(e);
-      setError("Error confirmando pago.");
-    } finally {
-      setConfirmando(false);
-    }
+  // ============================================================
+  // Manejo cuando el pago se confirma automáticamente (desde PagoQR)
+  // ============================================================
+  const handlePagoConfirmado = async () => {
+    // Vaciar carrito del backend y recargar estado local
+    await actor.vaciarCarrito();
+    await cargarCarrito();
+
+    setShowModalPago(false);
+    setPagoIniciado(null);
+
+    navigate("/checkout-confirmado", {
+      state: {
+        total: total,
+        productos: productosCarrito.length,
+      },
+    });
   };
 
+  // ============================================================
+  // Funciones auxiliares
+  // ============================================================
   const traducirError = (err) => {
     if (!err) return "Error desconocido";
     if (typeof err === "object") {
@@ -140,36 +176,22 @@ const CarritoDeCliente = () => {
     return JSON.stringify(err);
   };
 
-  // Copiar texto al portapapeles
-  const copiarAlPortapapeles = (texto) => {
-    navigator.clipboard.writeText(texto);
-    alert("Copiado al portapapeles");
-  };
-
   const confirmarEliminarProducto = (producto) => {
     setProductoAEliminar(producto);
     setShowModalEliminar(true);
   };
 
-  const ejecutarEliminacion = () => {
-    if (!productoAEliminar) return;
-    eliminarDelCarrito(productoAEliminar.id);
-    setProductoAEliminar(null);
-    setShowModalEliminar(false);
-  };
-
-  const ejecutarVaciarCarrito = () => {
-    vaciarCarrito();
-    setShowModalVaciar(false);
-  };
-
   const formatearPrecio = (producto) => {
     try {
-      const precio = Number(producto.precio || 0) / 100000000;
+      const precio = Number(producto.precioSnapshot || 0) / 100000000;
       return precio.toFixed(2);
     } catch {
       return "0.00";
     }
+  };
+
+  const formatearMonto = (montoE8s) => {
+    return (Number(montoE8s) / 100000000).toFixed(2);
   };
 
   const formatearFecha = (timestamp) => {
@@ -180,28 +202,42 @@ const CarritoDeCliente = () => {
         month: "long",
         day: "numeric",
         hour: "2-digit",
-        minute: "2-digit"
+        minute: "2-digit",
       });
     } catch {
       return "Fecha inválida";
     }
   };
 
-  const formatearMonto = (montoE8s) => {
-    return (Number(montoE8s) / 100000000).toFixed(2);
-  };
+  // Cargar historial
+  useEffect(() => {
+    const cargarTransacciones = async () => {
+      if (!actor) return;
+      setCargandoHistorial(true);
+      try {
+        const resultado = await actor.resumenTransacciones();
+        setTransacciones(resultado || []);
+      } catch (e) {
+        console.error(e);
+        setTransacciones([]);
+      } finally {
+        setCargandoHistorial(false);
+      }
+    };
+    if (tabActivo === "historial") {
+      cargarTransacciones();
+    }
+  }, [actor, tabActivo]);
 
+  // ============================================================
+  // Renderizado
+  // ============================================================
   return (
     <div className="container mt-4">
       <h2 className="text-center mb-4">🛒 Mi Carrito</h2>
 
-      <Tabs
-        activeKey={tabActivo}
-        onSelect={(k) => setTabActivo(k)}
-        className="mb-4"
-        justify
-      >
-        <Tab eventKey="carrito" title={`Carrito (${carrito.length})`}>
+      <Tabs activeKey={tabActivo} onSelect={(k) => setTabActivo(k)} className="mb-4" justify>
+        <Tab eventKey="carrito" title={`Carrito (${productosCarrito.length})`}>
           {error && (
             <Alert variant="danger">
               <FaExclamationTriangle className="me-2" />
@@ -209,7 +245,12 @@ const CarritoDeCliente = () => {
             </Alert>
           )}
 
-          {carrito.length === 0 ? (
+          {cargandoCarrito ? (
+            <div className="text-center p-5">
+              <Spinner animation="border" />
+              <p>Cargando carrito...</p>
+            </div>
+          ) : productosCarrito.length === 0 ? (
             <div className="text-center p-5 border rounded">
               <h4>Tu carrito está vacío</h4>
               <Button onClick={() => navigate("/cliente-dashboard")}>
@@ -218,18 +259,17 @@ const CarritoDeCliente = () => {
             </div>
           ) : (
             <>
-              {carrito.map((producto) => (
+              {productosCarrito.map((producto) => (
                 <Card key={producto.id} className="mb-3">
-                  <Card.Body className="d-flex justify-content-between">
+                  <Card.Body className="d-flex justify-content-between align-items-center">
                     <div>
                       <h6>{producto.nombre}</h6>
-                      <p className="text-success">
-                        ICP {formatearPrecio(producto)}
-                      </p>
+                      <p className="text-success">ICP {formatearPrecio(producto)}</p>
                     </div>
                     <Button
                       variant="outline-danger"
                       onClick={() => confirmarEliminarProducto(producto)}
+                      disabled={procesando}
                     >
                       <FaTrash />
                     </Button>
@@ -243,7 +283,7 @@ const CarritoDeCliente = () => {
                   <Button
                     variant="success"
                     size="lg"
-                    disabled={procesando}
+                    disabled={procesando || cargandoCarrito}
                     onClick={procederAlCheckout}
                   >
                     {procesando ? <Spinner size="sm" /> : "Proceder al pago"}
@@ -300,7 +340,7 @@ const CarritoDeCliente = () => {
         </Tab>
       </Tabs>
 
-      {/* Modal para eliminar producto */}
+      {/* Modal eliminar producto */}
       <Modal show={showModalEliminar} onHide={() => setShowModalEliminar(false)}>
         <Modal.Header closeButton>Confirmar eliminación</Modal.Header>
         <Modal.Body>¿Eliminar producto del carrito?</Modal.Body>
@@ -308,13 +348,13 @@ const CarritoDeCliente = () => {
           <Button variant="secondary" onClick={() => setShowModalEliminar(false)}>
             Cancelar
           </Button>
-          <Button variant="danger" onClick={ejecutarEliminacion}>
-            Eliminar
+          <Button variant="danger" onClick={ejecutarEliminacion} disabled={procesando}>
+            {procesando ? <Spinner size="sm" /> : "Eliminar"}
           </Button>
         </Modal.Footer>
       </Modal>
 
-      {/* Modal para vaciar carrito */}
+      {/* Modal vaciar carrito */}
       <Modal show={showModalVaciar} onHide={() => setShowModalVaciar(false)}>
         <Modal.Header closeButton>Vaciar carrito</Modal.Header>
         <Modal.Body>¿Seguro que deseas vaciar el carrito?</Modal.Body>
@@ -322,59 +362,29 @@ const CarritoDeCliente = () => {
           <Button variant="secondary" onClick={() => setShowModalVaciar(false)}>
             Cancelar
           </Button>
-          <Button variant="danger" onClick={ejecutarVaciarCarrito}>
-            Vaciar
+          <Button variant="danger" onClick={ejecutarVaciarCarrito} disabled={procesando}>
+            {procesando ? <Spinner size="sm" /> : "Vaciar"}
           </Button>
         </Modal.Footer>
       </Modal>
 
-      {/* Modal para mostrar datos del pago y confirmar */}
+      {/* Modal pago con QR (automático) */}
       <Modal show={showModalPago} onHide={() => setShowModalPago(false)} size="lg">
-        <Modal.Header closeButton>Pago iniciado</Modal.Header>
+        <Modal.Header closeButton>
+          <Modal.Title>Pago con ICP</Modal.Title>
+        </Modal.Header>
         <Modal.Body>
-          <p>Realiza la transferencia desde tu wallet:</p>
-          <div className="bg-light p-3 rounded mb-3">
-            <p><strong>Cuenta del canister:</strong></p>
-            <div className="d-flex align-items-center">
-              <code className="flex-grow-1 text-break">{pagoIniciado?.accountIdCanister}</code>
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                className="ms-2"
-                onClick={() => copiarAlPortapapeles(pagoIniciado?.accountIdCanister)}
-              >
-                <FaCopy />
-              </Button>
-            </div>
-          </div>
-          <div className="bg-light p-3 rounded mb-3">
-            <p><strong>Monto total:</strong> ICP {formatearMonto(pagoIniciado?.montoTotal)}</p>
-            <p><strong>Memo:</strong> {pagoIniciado?.memo}</p>
-          </div>
-          <p className="text-muted">
-            Después de enviar los ICP, ingresa el número de bloque (block height) de la transacción:
-          </p>
-          <Form.Group className="mb-3">
-            <Form.Label>Block Height</Form.Label>
-            <Form.Control
-              type="number"
-              placeholder="Ejemplo: 12345678"
-              value={blockHeight}
-              onChange={(e) => setBlockHeight(e.target.value)}
+          {pagoIniciado && (
+            <PagoQR
+              pago={pagoIniciado}
+              actor={actor}
+              onConfirmado={handlePagoConfirmado}
             />
-          </Form.Group>
-          {error && <Alert variant="danger">{error}</Alert>}
+          )}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModalPago(false)}>
             Cancelar
-          </Button>
-          <Button
-            variant="success"
-            onClick={confirmarPago}
-            disabled={confirmando || !blockHeight}
-          >
-            {confirmando ? <Spinner size="sm" /> : "Confirmar pago"}
           </Button>
         </Modal.Footer>
       </Modal>

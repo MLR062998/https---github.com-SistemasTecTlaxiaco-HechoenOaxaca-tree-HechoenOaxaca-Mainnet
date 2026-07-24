@@ -1,20 +1,26 @@
 // src/main.jsx
+
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import { Buffer } from "buffer";
+
 import App from "./App";
 import "./index.scss";
 
-import { Buffer } from "buffer";
-window.Buffer = Buffer;
-
 import { AuthProvider } from "./components/authContext";
-import { BrowserRouter } from "react-router-dom";
-import { setupGlobalErrorHandling } from "./utils/global-error-handler"; // ✅ Corregido el nombre
+
+import { setupGlobalErrorHandling } from "./utils/globalThis-error-handler";
+
+// Polyfill Buffer para ICP
+window.Buffer = Buffer;
 
 // Configurar manejo global de errores
 setupGlobalErrorHandling();
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
+const root = ReactDOM.createRoot(
+  document.getElementById("root")
+);
 
 root.render(
   <React.StrictMode>

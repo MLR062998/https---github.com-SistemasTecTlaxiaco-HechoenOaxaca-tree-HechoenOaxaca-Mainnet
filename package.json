@@ -9,7 +9,7 @@
   "scripts": {
     "validate": "./validate-declarations.sh",
     "deploy:ic": "npm run validate && dfx deploy --network ic",
-    "prebuild": "node scripts/patch-rollup-ast.cjs && dfx generate && ./fix-broken-dts.sh && ./fix-did-imports.sh && ./fix-did-envs.sh && ./sanitize-declarations.sh",
+    "prebuild": "node scripts/patch-rollup-ast.cjs && dfx generate HechoenOaxaca-icp-backend-v2 && ./fix-broken-dts.sh && ./fix-did-imports.sh && ./fix-did-envs.sh && ./sanitize-declarations.sh",
     "pretest": "npm run prebuild --workspaces --if-present",
     "start": "npm start --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
@@ -30,8 +30,10 @@
     "@dfinity/candid": "^2.4.1",
     "@dfinity/identity": "^2.4.1",
     "@dfinity/principal": "^2.4.1",
+    "qrcode.react": "^4.2.0",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "react-icons": "^5.7.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.3",

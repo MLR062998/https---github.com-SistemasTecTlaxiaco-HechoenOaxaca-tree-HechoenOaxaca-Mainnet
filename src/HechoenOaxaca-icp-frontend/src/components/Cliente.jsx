@@ -1,4 +1,4 @@
-// src/components/ClienteDashboard.jsx - VERSIÓN CORREGIDA
+// src/components/ClienteDashboard.jsx - VERSIÓN CORREGIDA (sin Wallet)
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Button from "react-bootstrap/Button";
@@ -12,7 +12,7 @@ import { useAuthContext } from "./authContext";
 import Compra from "./Compra";
 import { useCarrito } from "../context/CarritoContext";
 import { processProductsList } from "../utils/imageUtils";
-import "../cliente.scss"; // 
+import "../cliente.scss";
 
 const ClienteDashboard = () => {
   const navigate = useNavigate();
@@ -74,39 +74,22 @@ const ClienteDashboard = () => {
     setEditFormData({ ...editFormData, [name]: value });
   };
 
+  // ✅ CORREGIDO: usar actor.actualizarPerfil (no actor.editarPerfil)
   const handleSaveChanges = async () => {
     try {
-      if (actor.editarPerfil) {
-        const result = await actor.editarPerfil(
-          editFormData.nombreCompleto,
-          editFormData.lugarOrigen,
-          editFormData.telefono
-        );
+      const result = await actor.actualizarPerfil(
+        editFormData.nombreCompleto,
+        editFormData.lugarOrigen,
+        editFormData.telefono
+      );
 
-        if ("ok" in result) {
-          setPerfil(editFormData);
-          setShowEditModal(false);
-          alert("Perfil actualizado correctamente");
-        } else {
-          console.error("Error al actualizar el perfil:", result.err);
-          alert("Error al actualizar el perfil");
-        }
+      if ("ok" in result) {
+        setPerfil(editFormData);
+        setShowEditModal(false);
+        alert("Perfil actualizado correctamente");
       } else {
-        const result = await actor.registrarUsuario(
-          editFormData.nombreCompleto,
-          editFormData.lugarOrigen,
-          editFormData.telefono,
-          "Cliente"
-        );
-
-        if ("ok" in result) {
-          setPerfil(editFormData);
-          setShowEditModal(false);
-          alert("Perfil actualizado correctamente");
-        } else {
-          console.error("Error al actualizar el perfil:", result.err);
-          alert("Error al actualizar el perfil");
-        }
+        console.error("Error al actualizar el perfil:", result.err);
+        alert("Error al actualizar el perfil");
       }
     } catch (error) {
       console.error("Error actualizando perfil:", error);
@@ -126,7 +109,7 @@ const ClienteDashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="cliente-dashboard"> {/* ✅ Cambié a "cliente-dashboard" */}
+      <div className="cliente-dashboard">
         {/* Header con perfil compacto */}
         <div className="dashboard-header">
           {perfil && (
@@ -162,11 +145,9 @@ const ClienteDashboard = () => {
             </div>
           )}
 
-          {/* Botones de acción */}
+          {/* Botones de acción - ELIMINADO EL BOTÓN WALLET */}
           <div className="action-buttons-compact">
-            <Button variant="light" className="action-btn-compact" onClick={() => navigate("/wallet")}>
-              💰 Wallet
-            </Button>
+            {/* ❌ Eliminado el botón que navegaba a /wallet */}
             <Button variant="light" className="action-btn-compact" onClick={() => navigate("/notificaciones-cliente")}>
               🔔 Notificaciones
             </Button>
@@ -294,7 +275,7 @@ const ClienteDashboard = () => {
           )}
         </div>
 
-        {/* Modal de Edición de Perfil (se mantiene igual) */}
+        {/* Modal de Edición de Perfil */}
         <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="sm">
           <Modal.Header closeButton>
             <Modal.Title>Editar Perfil</Modal.Title>

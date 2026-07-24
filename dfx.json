@@ -1,24 +1,40 @@
 {
   "version": 1,
+
   "output_env_file": ".env",
+
   "canisters": {
-    "HechoenOaxaca-icp-backend": {
+    "HechoenOaxaca-icp-backend-v2": {
       "type": "motoko",
+
       "main": "src/HechoenOaxaca-icp-backend/main.mo",
+
       "candid": "src/HechoenOaxaca-icp-backend/HechoenOaxaca-icp-backend.did",
-      "initial_cycles": 100000000000,
-      "dependencies": ["ledger"]
+
+      "initial_cycles": 300000000000
     },
-    "HechoenOaxaca-icp-frontend": {
+
+    "HechoenOaxaca-icp-frontend-v2": {
       "type": "assets",
-      "dependencies": ["HechoenOaxaca-icp-backend"],
-      "source": ["src/HechoenOaxaca-icp-frontend/dist"],
-      "build": "npm run build"
+
+      "dependencies": [
+        "HechoenOaxaca-icp-backend-v2"
+      ],
+
+      "source": [
+        "src/HechoenOaxaca-icp-frontend/dist"
+      ],
+
+      "build": "cd src/HechoenOaxaca-icp-frontend && npm run build"
     },
+
     "ledger": {
       "type": "custom",
+
       "candid": "ledger/ledger.did",
+
       "wasm": "",
+
       "remote": {
         "id": {
           "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai"
@@ -26,16 +42,30 @@
       }
     }
   },
+
   "defaults": {
     "build": {
       "args": "",
+
       "packtool": "mops sources"
     }
   },
+
   "networks": {
+    "local": {
+      "bind": "127.0.0.1:4943",
+
+      "type": "ephemeral"
+    },
+
     "ic": {
       "type": "persistent",
-      "providers": ["https://icp-api.io"]
+
+      "providers": [
+        "https://ic0.app",
+
+        "https://icp-api.io"
+      ]
     }
   }
 }

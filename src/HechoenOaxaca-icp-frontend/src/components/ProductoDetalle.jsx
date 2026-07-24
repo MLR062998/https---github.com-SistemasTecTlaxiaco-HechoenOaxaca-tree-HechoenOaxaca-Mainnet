@@ -1,8 +1,9 @@
 // src/components/ProductoDetalle.jsx
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Button, Card, Container, Row, Col, Spinner, Alert } from "react-bootstrap";
-import { FaShoppingCart, FaCreditCard, FaArrowLeft, FaExclamationTriangle } from "react-icons/fa";
+import { Button, Card, Container, Row, Col, Spinner, Alert, Badge } from "react-bootstrap";
+import { FaShoppingCart, FaCreditCard, FaArrowLeft, FaExclamationTriangle, FaShieldAlt, FaQrcode } from "react-icons/fa";
+import { QRCodeSVG } from "qrcode.react";
 import { useAuthContext } from "./authContext";
 import { useCarrito } from "../context/CarritoContext";
 
@@ -14,10 +15,10 @@ const ProductoDetalle = () => {
   
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState("");
+  const [mostrarQR, setMostrarQR] = useState(false);
 
   const producto = location.state;
 
-  // ✅ CORREGIDO: Función mejorada para agregar al carrito
   const handleAgregarAlCarrito = () => {
     if (!producto) {
       setError("Producto no disponible");
@@ -25,7 +26,6 @@ const ProductoDetalle = () => {
     }
     
     try {
-      // ✅ Asegurar que el producto tenga precioICP
       const productoConPrecio = {
         ...producto,
         precioICP: producto.precioICP || (Number(producto.precio || 0) / 100_000_000)
@@ -41,7 +41,6 @@ const ProductoDetalle = () => {
     }
   };
 
-  // ✅ CORREGIDO: Función mejorada para compra directa
   const handleCompraDirecta = async () => {
     if (!producto) {
       setError("Producto no disponible");
@@ -63,9 +62,7 @@ const ProductoDetalle = () => {
       const res = await actor.realizarCompra(ids);
       console.log("📦 Respuesta del backend:", res);
 
-      // ✅ MEJORADO: Manejo robusto de la respuesta
       if (res && "ok" in res) {
-        // ✅ Compra exitosa
         console.log("✅ Compra directa exitosa!");
         navigate("/checkout-confirmado", { 
           state: { 
@@ -75,12 +72,10 @@ const ProductoDetalle = () => {
           } 
         });
       } else if (res && "err" in res) {
-        // ✅ Error explícito del backend
         const errorMsg = obtenerMensajeError(res.err);
         console.error("❌ Error en compra directa:", res.err);
         setError(`Error al procesar la compra: ${errorMsg}`);
       } else {
-        // ✅ Respuesta inesperada
         console.error("⚠️ Respuesta inesperada del backend:", res);
         setError("Respuesta inesperada del sistema. Intenta nuevamente.");
       }
@@ -92,7 +87,6 @@ const ProductoDetalle = () => {
     }
   };
 
-  // ✅ NUEVO: Función para traducir errores del backend
   const obtenerMensajeError = (error) => {
     if (!error) return "Error desconocido";
     
@@ -139,12 +133,14 @@ const ProductoDetalle = () => {
     );
   }
 
-  // ✅ Calcular precio seguro
   const precioICP = producto.precioICP || (Number(producto.precio || 0) / 100_000_000);
+  const tieneCertificado = producto.hash && producto.firma;
+
+  // URL para el QR (página de verificación pública)
+  const verificarUrl = `${window.location.origin}/verificar/${producto.id}`;
 
   return (
     <Container className="mt-4">
-      {/* Botón de volver */}
       <Button 
         variant="outline-secondary" 
         onClick={() => navigate("/cliente-dashboard")}
@@ -188,8 +184,15 @@ const ProductoDetalle = () => {
         <Col md={6}>
           <Card className="h-100 shadow-sm">
             <Card.Body className="d-flex flex-column">
-              <h1 className="text-primary mb-3">{producto.nombre}</h1>
-              
+              <div className="d-flex justify-content-between align-items-start mb-3">
+                <h1 className="text-primary">{producto.nombre}</h1>
+                {tieneCertificado && (
+                  <Badge bg="success" className="p-2">
+                    <FaShieldAlt className="me-1" /> Certificado
+                  </Badge>
+                )}
+              </div>
+
               <div className="mb-3">
                 <h5>📖 Descripción</h5>
                 <p className="text-muted">{producto.descripcion}</p>
@@ -205,7 +208,7 @@ const ProductoDetalle = () => {
                 <h3 className="text-success">ICP {precioICP.toFixed(2)}</h3>
               </div>
 
-              <div className="mb-4">
+              <div className="mb-3">
                 <h5>👨‍🎨 Artesano</h5>
                 <p className="text-muted small">
                   {typeof producto.artesano === 'string' 
@@ -213,6 +216,63 @@ const ProductoDetalle = () => {
                     : 'Artista local de Oaxaca'}
                 </p>
               </div>
+
+              {/* 🔥 SECCIÓN DE CERTIFICADO DE AUTENTICIDAD */}
+              {tieneCertificado ? (
+                <div className="mb-3 p-3 bg-light rounded border">
+                  <h5 className="text-success">
+                    <FaShieldAlt className="me-2" />
+                    Certificado de Autenticidad
+                  </h5>
+                  <div className="small">
+                    <p><strong>Hash:</strong> <code className="text-break">{producto.hash}</code></p>
+                    {producto.firma && (
+                      <p><strong>Firma digital:</strong> <code className="text-break">{producto.firma}</code></p>
+                    )}
+                    {producto.certificado && (
+                      <p><strong>Certificado:</strong> {producto.certificado}</p>
+                    )}
+                    {producto.fechaCertificacion && (
+                      <p><strong>Fecha de certificación:</strong> {new Date(Number(producto.fechaCertificacion) / 1_000_000).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    )}
+                  </div>
+
+                  {/* QR - CORREGIDO con QRCodeSVG */}
+                  <div className="mt-2 text-center">
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm"
+                      onClick={() => setMostrarQR(!mostrarQR)}
+                    >
+                      <FaQrcode className="me-1" />
+                      {mostrarQR ? 'Ocultar QR' : 'Ver QR de verificación'}
+                    </Button>
+                    {mostrarQR && (
+                      <div className="mt-3 d-flex justify-content-center">
+                        <QRCodeSVG
+                          value={verificarUrl}
+                          size={180}
+                          level="H"
+                          marginSize={2}
+                          bgColor="#ffffff"
+                          fgColor="#000000"
+                        />
+                      </div>
+                    )}
+                    <div className="mt-1 small text-muted">
+                      Escanea este código para verificar la autenticidad del producto
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-3 p-3 bg-light rounded border">
+                  <h5 className="text-muted">
+                    <FaShieldAlt className="me-2" />
+                    Sin certificado
+                  </h5>
+                  <p className="small text-muted mb-0">Este producto no cuenta con certificado de autenticidad.</p>
+                </div>
+              )}
 
               {/* Botones de acción */}
               <div className="mt-auto d-grid gap-3">

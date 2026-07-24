@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsc --skipLibCheck && vite build",
     "preview": "vite preview",
-    "prebuild": "./debug-vite.sh"
+    "prebuild": "dfx generate HechoenOaxaca-icp-backend-v2 && sed -i 's|@icp-sdk/core/agent|@dfinity/agent|g' ../declarations/HechoenOaxaca-icp-backend-v2/index.js && sed -i '/createActor();/d' ../declarations/HechoenOaxaca-icp-backend-v2/index.js"
   },
   "devDependencies": {
     "@types/node": "^20.17.30",
@@ -29,6 +29,7 @@
     "@dfinity/identity": "^2.4.1",
     "bootstrap": "^5.3.3",
     "buffer": "^6.0.3",
+    "qrcode.react": "^4.2.0",
     "react-bootstrap": "^2.10.0",
     "react-icons": "^4.11.0",
     "react-router-dom": "^6.22.3",

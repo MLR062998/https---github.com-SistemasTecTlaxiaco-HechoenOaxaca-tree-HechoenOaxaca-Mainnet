@@ -4,268 +4,654 @@ import React, {
   useEffect,
   useState,
   useMemo,
-  useCallback
+  useCallback,
 } from "react";
+
 import { useNavigate } from "react-router-dom";
+
 import { AuthClient } from "@dfinity/auth-client";
-import { AnonymousIdentity, HttpAgent, Actor } from "@dfinity/agent";
+
 import {
-  idlFactory,
-  canisterId as backendCanisterId,
-} from "declarations/HechoenOaxaca-icp-backend";
+  AnonymousIdentity,
+  HttpAgent,
+  Actor,
+} from "@dfinity/agent";
+
+import { idlFactory } from "declarations/HechoenOaxaca-icp-backend-v2";
 
 const AuthContext = createContext(null);
 
-// Estados posibles de autenticación
+// =====================================================
+// Estados de autenticación
+// =====================================================
+
 const AUTH_STATES = {
   INITIALIZING: "initializing",
   AUTHENTICATING: "authenticating",
   AUTHENTICATED: "authenticated",
   ANONYMOUS: "anonymous",
-  ERROR: "error"
+  ERROR: "error",
 };
 
-// Principales anónimos conocidos
+// =====================================================
+// CANISTER ID ICP MAINNET
+// =====================================================
+
+const BACKEND_CANISTER_ID =
+  import.meta.env.VITE_BACKEND_CANISTER_ID ||
+  "2ekj4-4qaaa-aaaae-qj2pq-cai";
+
+console.log(
+  "Backend Canister:",
+  BACKEND_CANISTER_ID
+);
+
+// =====================================================
+// SOLO principal anónimo REAL
+// =====================================================
+
 const ANONYMOUS_PRINCIPALS = new Set([
   "2vxsx-fae",
-  "2vxsx-fae-cai"
 ]);
 
+// =====================================================
+// Auth Provider
+// =====================================================
+
 export const AuthProvider = ({ children }) => {
+  console.log(
+    "VITE_BACKEND_CANISTER_ID:",
+    import.meta.env
+      .VITE_BACKEND_CANISTER_ID
+  );
+
   const navigate = useNavigate();
-  const [authClient, setAuthClient] = useState(null);
-  const [identity, setIdentity] = useState(new AnonymousIdentity());
+
+  const [authClient, setAuthClient] =
+    useState(null);
+
+  const [identity, setIdentity] = useState(
+    new AnonymousIdentity()
+  );
+
   const [actor, setActor] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const [rol, setRol] = useState(
+    localStorage.getItem("rol") || null
+  );
+
+  const [isLoading, setIsLoading] =
+    useState(true);
+
   const [authState, setAuthState] = useState({
     status: AUTH_STATES.INITIALIZING,
     error: null,
   });
 
-  // ✅ CONFIGURACIÓN SOLO NFID PARA MAINNET
+  // =====================================================
+  // ICP MAINNET
+  // =====================================================
+
   const host = "https://icp-api.io";
-  const identityProvider = "https://nfid.one/authenticate?applicationName=HechoEnOaxaca";
 
-  // ✅ Función para detectar si es principal anónimo (ESTABLE)
-  const isAnonymousPrincipal = useCallback((principal) => {
-    if (!principal) return true;
-    const principalText = principal.toString();
-    return principal.isAnonymous() || 
-           ANONYMOUS_PRINCIPALS.has(principalText) ||
-           principalText.endsWith("-cai");
-  }, []);
+  // =====================================================
+  // NFID
+  // =====================================================
 
-  // Configuración del actor (ESTABLE)
-  const setupActor = useCallback(async (id) => {
-    try {
-      const agent = new HttpAgent({ identity: id, host });
-      return Actor.createActor(idlFactory, {
-        agent,
-        canisterId: backendCanisterId,
-      });
-    } catch (error) {
-      console.error("Error setting up actor:", error);
-      throw error;
-    }
-  }, [host]);
+  const identityProvider =
+    "https://nfid.one/authenticate?applicationName=HechoEnOaxaca";
 
-  // ✅ Redirección de usuario - MOVIDA FUERA para evitar recreación constante
-  const handleUserRedirect = useCallback(async (act, principal) => {
-    try {
-      if (isAnonymousPrincipal(principal)) {
-        setAuthState({ status: AUTH_STATES.ANONYMOUS, error: null });
-        return;
-      }
+  // =====================================================
+  // Detectar principal anónimo
+  // =====================================================
 
-      if (!act || typeof act.obtenerUsuario !== 'function') {
-        throw new Error("Actor no tiene método obtenerUsuario");
-      }
+  const isAnonymousPrincipal = useCallback(
+    (principal) => {
+      if (!principal) return true;
 
-      const res = await act.obtenerUsuario();
-      
-      if ("ok" in res) {
-        const rol = Object.keys(res.ok.rol)[0];
-        localStorage.setItem("rol", rol);
-        setAuthState({ status: AUTH_STATES.AUTHENTICATED, error: null });
-        
-        const routeMap = {
-          Artesano: "/artesano-dashboard",
-          Cliente: "/cliente-dashboard",
-          Intermediario: "/intermediario-dashboard"
-        };
-        
-        const targetRoute = routeMap[rol] || "/registro";
-        
-        // ✅ Solo navegar si no estamos ya en la ruta correcta
-        if (window.location.pathname !== targetRoute) {
-          navigate(targetRoute);
-        }
-      } else {
-        localStorage.removeItem("rol");
-        setAuthState({ status: AUTH_STATES.ANONYMOUS, error: null });
-        
-        // ✅ Solo navegar si no estamos ya en registro
-        if (window.location.pathname !== "/registro") {
-          navigate("/registro");
-        }
-      }
-    } catch (err) {
-      console.error("Error en handleUserRedirect:", err);
-      setAuthState({ 
-        status: AUTH_STATES.ERROR, 
-        error: err.message || "Error al verificar usuario" 
-      });
-      
-      if (window.location.pathname !== "/") {
-        navigate("/");
-      }
-    }
-  }, [isAnonymousPrincipal]); // ✅ REMOVIDA 'navigate' de las dependencias
-
-  // Inicialización del cliente de autenticación
-  useEffect(() => {
-    let isMounted = true;
-
-    const initializeAuth = async () => {
       try {
-        const client = await AuthClient.create();
-        if (!isMounted) return;
+        const principalText =
+          principal.toText();
 
-        setAuthClient(client);
-        const id = client.getIdentity();
-        const principal = id.getPrincipal();
-        
-        setIdentity(id);
-        
-        const act = await setupActor(id);
+        return (
+          principal.isAnonymous() ||
+          ANONYMOUS_PRINCIPALS.has(
+            principalText
+          )
+        );
+      } catch {
+        return true;
+      }
+    },
+    []
+  );
 
-        if (!isMounted) return;
-        
-        setActor(act);
-        
-        const isAuth = !isAnonymousPrincipal(principal);
-        
-        if (isAuth) {
-          await handleUserRedirect(act, principal);
-        } else {
-          setAuthState({ status: AUTH_STATES.ANONYMOUS, error: null });
+  // =====================================================
+  // Crear actor ICP
+  // =====================================================
+
+  const setupActor = useCallback(
+    async (id) => {
+      try {
+        if (!BACKEND_CANISTER_ID) {
+          throw new Error(
+            "BACKEND_CANISTER_ID no definido"
+          );
+        }
+
+        const agent = new HttpAgent({
+          identity: id,
+          host,
+        });
+
+        if (
+          window.location.hostname ===
+            "localhost" ||
+          window.location.hostname ===
+            "127.0.0.1"
+        ) {
+          await agent.fetchRootKey();
+        }
+
+        console.log(
+          "Creando actor para:",
+          BACKEND_CANISTER_ID
+        );
+
+        const actorInstance =
+          Actor.createActor(idlFactory, {
+            agent,
+            canisterId:
+              BACKEND_CANISTER_ID,
+          });
+
+        return actorInstance;
+      } catch (error) {
+        console.error(
+          "Error creando actor:",
+          error
+        );
+
+        throw error;
+      }
+    },
+    []
+  );
+
+  // =====================================================
+  // Redirección por rol
+  // =====================================================
+
+  const handleUserRedirect = useCallback(
+    async (act, principal) => {
+      try {
+        // Usuario anónimo
+        if (
+          isAnonymousPrincipal(principal)
+        ) {
+          setAuthState({
+            status:
+              AUTH_STATES.ANONYMOUS,
+            error: null,
+          });
+
+          return;
+        }
+
+        // Validar actor
+        if (
+          typeof act?.obtenerUsuario !==
+          "function"
+        ) {
+          throw new Error(
+            "El actor no contiene obtenerUsuario"
+          );
+        }
+
+        // ======= LOG: Llamada a obtenerUsuario =======
+        console.log("📞 Llamando a obtenerUsuario con principal:", principal.toText());
+
+        // Obtener usuario
+        const response =
+          await act.obtenerUsuario();
+
+        // ======= LOG: Respuesta completa =======
+        console.log("========== RESPUESTA BACKEND ==========");
+        console.log(response);
+        console.log("=======================================");
+
+        // Usuario encontrado
+        if ("ok" in response) {
+          const rolData =
+            response.ok?.rol;
+
+          if (
+            !rolData ||
+            typeof rolData !==
+              "object"
+          ) {
+            throw new Error(
+              "Rol inválido"
+            );
+          }
+
+          const userRol =
+            Object.keys(rolData)[0];
+
+          setRol(userRol);
+
+          localStorage.setItem(
+            "rol",
+            userRol
+          );
+
+          setAuthState({
+            status:
+              AUTH_STATES.AUTHENTICATED,
+            error: null,
+          });
+
+          // Rutas
+          const routes = {
+            Artesano:
+              "/artesano-dashboard",
+
+            Cliente:
+              "/cliente-dashboard",
+
+            Intermediario:
+              "/intermediario-dashboard",
+          };
+
+          const targetRoute =
+            routes[userRol] ||
+            "/registro";
+
+          // 🔥 CORREGIDO: Redirige solo si NO estás dentro del dashboard
+          // Permite subrutas como /artesano-dashboard/nuevo-producto
+          if (
+            !window.location.pathname.startsWith(targetRoute)
+          ) {
+            navigate(targetRoute, { replace: true });
+          }
+        }
+
+        // Usuario no registrado
+        else {
+          console.log("❌ Usuario no registrado (response.err):", response.err);
+
+          setRol(null);
+
+          localStorage.removeItem(
+            "rol"
+          );
+
+          setAuthState({
+            status:
+              AUTH_STATES.ANONYMOUS,
+            error: null,
+          });
+
+          if (
+            window.location.pathname !==
+            "/registro"
+          ) {
+            navigate("/registro");
+          }
         }
       } catch (err) {
-        console.error("Error inicializando auth:", err);
-        if (isMounted) {
-          setAuthState({ 
-            status: AUTH_STATES.ERROR, 
-            error: "Error de conexión con Internet Computer" 
+        console.error(
+          "❌ ERROR en handleUserRedirect:",
+          err
+        );
+        console.error("STACK:", err.stack);
+
+        setAuthState({
+          status: AUTH_STATES.ERROR,
+
+          error:
+            err?.message ||
+            "Error verificando usuario",
+        });
+
+        // 🔥 COMENTADO temporalmente para evitar redirección automática
+        // navigate("/");
+      }
+    },
+    [
+      isAnonymousPrincipal,
+      navigate,
+    ]
+  );
+
+  // =====================================================
+  // Inicializar autenticación
+  // =====================================================
+
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      try {
+        const client =
+          await AuthClient.create();
+
+        if (!mounted) return;
+
+        setAuthClient(client);
+
+        // Verificar autenticación
+        const isAuth =
+          await client.isAuthenticated();
+
+        const id =
+          client.getIdentity();
+
+        const principal =
+          id.getPrincipal();
+
+        setIdentity(id);
+
+        const actorInstance =
+          await setupActor(id);
+
+        if (!mounted) return;
+
+        setActor(actorInstance);
+
+        // Usuario autenticado
+        if (
+          isAuth &&
+          !isAnonymousPrincipal(
+            principal
+          )
+        ) {
+          await handleUserRedirect(
+            actorInstance,
+            principal
+          );
+        }
+
+        // Usuario anónimo
+        else {
+          setAuthState({
+            status:
+              AUTH_STATES.ANONYMOUS,
+            error: null,
+          });
+        }
+      } catch (err) {
+        console.error(
+          "Error inicializando auth:",
+          err
+        );
+
+        if (mounted) {
+          setAuthState({
+            status:
+              AUTH_STATES.ERROR,
+
+            error:
+              "No fue posible conectar con ICP",
           });
         }
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    initializeAuth();
+    init();
 
     return () => {
-      isMounted = false;
+      mounted = false;
     };
-  }, [setupActor, isAnonymousPrincipal]); // ✅ REMOVIDA handleUserRedirect de las dependencias
-
-  // ✅ Función de login SOLO con NFID
-  const login = useCallback(async () => {
-    if (!authClient) return;
-    
-    setAuthState({ status: AUTH_STATES.AUTHENTICATING, error: null });
-
-    try {
-      await authClient.login({
-        identityProvider, // ✅ Solo NFID
-        onSuccess: async () => {
-          const id = authClient.getIdentity();
-          const principal = id.getPrincipal();
-          setIdentity(id);
-          
-          const act = await setupActor(id);
-          setActor(act);
-          await handleUserRedirect(act, principal);
-        },
-        onError: (err) => {
-          console.error("Error en login NFID:", err);
-          setAuthState({ 
-            status: AUTH_STATES.ERROR, 
-            error: "Error durante la autenticación con NFID" 
-          });
-        },
-        windowOpenerFeatures: `width=500,height=600,left=${window.screen.width/2 - 250},top=${window.screen.height/2 - 300}`
-      });
-    } catch (err) {
-      console.error("Login NFID fallido:", err);
-      setAuthState({ 
-        status: AUTH_STATES.ERROR, 
-        error: "Error al iniciar sesión con NFID" 
-      });
-    }
-  }, [authClient, identityProvider, setupActor, handleUserRedirect]);
-
-  // Función de logout
-  const logout = useCallback(async () => {
-    try {
-      if (authClient) {
-        await authClient.logout();
-      }
-      
-      localStorage.removeItem("rol");
-      setIdentity(new AnonymousIdentity());
-      setActor(null);
-      setAuthState({ status: AUTH_STATES.ANONYMOUS, error: null });
-      
-      // ✅ Usar window.location en lugar de navigate para evitar dependencias
-      window.location.href = "/";
-    } catch (err) {
-      console.error("Error en logout:", err);
-      setAuthState({
-        status: AUTH_STATES.ERROR,
-        error: "Error al cerrar sesión"
-      });
-    }
-  }, [authClient]); // ✅ REMOVIDA 'navigate' de las dependencias
-
-  // ✅ Conexión directa a NFID (sin modal de selección)
-  const connect = useCallback(() => {
-    login();
-  }, [login]);
-
-  // Valores derivados
-  const principalId = useMemo(
-    () => identity?.getPrincipal()?.toString() ?? null,
-    [identity]
-  );
-
-  const isAuthenticated = useMemo(
-    () => authState.status === AUTH_STATES.AUTHENTICATED,
-    [authState.status]
-  );
-
-  const value = useMemo(() => ({
-    isAuthenticated,
-    principalId,
-    isLoading,
-    authState,
-    rol: localStorage.getItem("rol") ?? null,
-    actor,
-    login,
-    logout,
-    connect,
-    isAnonymous: authState.status === AUTH_STATES.ANONYMOUS
-  }), [
-    isAuthenticated,
-    principalId,
-    isLoading,
-    authState,
-    actor,
-    login,
-    logout,
-    connect
+  }, [
+    setupActor,
+    isAnonymousPrincipal,
+    handleUserRedirect,
   ]);
+
+  // =====================================================
+  // LOGIN NFID
+  // =====================================================
+
+  const login = useCallback(
+    async () => {
+      if (!authClient) return;
+
+      try {
+        setAuthState({
+          status:
+            AUTH_STATES.AUTHENTICATING,
+          error: null,
+        });
+
+        await authClient.login({
+          identityProvider,
+
+          // 7 días
+          maxTimeToLive:
+            BigInt(
+              7 *
+                24 *
+                60 *
+                60 *
+                1000000000
+            ),
+
+          onSuccess: async () => {
+            try {
+              const id =
+                authClient.getIdentity();
+
+              const principal =
+                id.getPrincipal();
+
+              // ======= LOG: Principal =======
+              console.log("🔑 Principal después de login:", principal.toText());
+
+              setIdentity(id);
+
+              const actorInstance =
+                await setupActor(id);
+
+              setActor(actorInstance);
+
+              await handleUserRedirect(
+                actorInstance,
+                principal
+              );
+            } catch (err) {
+              console.error(
+                "Error post login:",
+                err
+              );
+
+              setAuthState({
+                status:
+                  AUTH_STATES.ERROR,
+
+                error:
+                  "Error obteniendo usuario",
+              });
+            }
+          },
+
+          onError: (err) => {
+            console.error(
+              "Error login NFID:",
+              err
+            );
+
+            setAuthState({
+              status:
+                AUTH_STATES.ERROR,
+
+              error:
+                "Error autenticando con NFID",
+            });
+          },
+
+          windowOpenerFeatures: `
+            left=${
+              window.screen.width /
+                2 -
+              250
+            },
+            top=${
+              window.screen.height /
+                2 -
+              300
+            },
+            toolbar=0,
+            location=0,
+            menubar=0,
+            width=500,
+            height=600
+          `,
+        });
+      } catch (err) {
+        console.error(
+          "Login fallido:",
+          err
+        );
+
+        setAuthState({
+          status: AUTH_STATES.ERROR,
+
+          error:
+            "No fue posible iniciar sesión",
+        });
+      }
+    },
+    [
+      authClient,
+      setupActor,
+      handleUserRedirect,
+    ]
+  );
+
+  // =====================================================
+  // LOGOUT
+  // =====================================================
+
+  const logout = useCallback(
+    async () => {
+      try {
+        if (authClient) {
+          await authClient.logout();
+        }
+
+        setRol(null);
+
+        localStorage.removeItem(
+          "rol"
+        );
+
+        setIdentity(
+          new AnonymousIdentity()
+        );
+
+        setActor(null);
+
+        setAuthState({
+          status:
+            AUTH_STATES.ANONYMOUS,
+          error: null,
+        });
+
+        navigate("/");
+      } catch (err) {
+        console.error(
+          "Error logout:",
+          err
+        );
+
+        setAuthState({
+          status: AUTH_STATES.ERROR,
+
+          error:
+            "Error cerrando sesión",
+        });
+      }
+    },
+    [authClient, navigate]
+  );
+
+  // =====================================================
+  // CONNECT
+  // =====================================================
+
+  const connect = login;
+
+  // =====================================================
+  // Principal ID (string) y Principal (objeto)
+  // =====================================================
+
+  // Obtener el objeto Principal directamente desde identity
+  const principal = useMemo(() => {
+    try {
+      return identity?.getPrincipal() || null;
+    } catch {
+      return null;
+    }
+  }, [identity]);
+
+  const principalId = useMemo(() => {
+    try {
+      return principal?.toText() || null;
+    } catch {
+      return null;
+    }
+  }, [principal]);
+
+  // =====================================================
+  // Usuario autenticado
+  // =====================================================
+
+  const isAuthenticated =
+    useMemo(() => {
+      return (
+        authState.status ===
+        AUTH_STATES.AUTHENTICATED
+      );
+    }, [authState.status]);
+
+  // =====================================================
+  // Context Value
+  // =====================================================
+
+  const value = useMemo(
+    () => ({
+      isAuthenticated,
+      principal,          // <-- NUEVO: objeto Principal (para llamadas)
+      principalId,        // <-- string (para mostrar)
+      isLoading,
+      authState,
+      rol,
+      actor,
+      login,
+      logout,
+      connect,
+      isAnonymous:
+        authState.status ===
+        AUTH_STATES.ANONYMOUS,
+    }),
+    [
+      isAuthenticated,
+      principal,
+      principalId,
+      isLoading,
+      authState,
+      rol,
+      actor,
+      login,
+      logout,
+      connect,
+    ]
+  );
 
   return (
     <AuthContext.Provider value={value}>
@@ -274,10 +660,19 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// =====================================================
+// Hook personalizado
+// =====================================================
+
 export const useAuthContext = () => {
-  const context = useContext(AuthContext);
+  const context =
+    useContext(AuthContext);
+
   if (!context) {
-    throw new Error("useAuthContext debe usarse dentro de un AuthProvider");
+    throw new Error(
+      "useAuthContext debe usarse dentro de AuthProvider"
+    );
   }
+
   return context;
 };

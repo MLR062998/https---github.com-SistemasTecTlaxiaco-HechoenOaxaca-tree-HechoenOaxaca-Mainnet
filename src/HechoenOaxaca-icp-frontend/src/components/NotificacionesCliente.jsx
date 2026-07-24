@@ -1,57 +1,28 @@
-import React, { useState, useEffect } from "react";
-import { HechoenOaxacaIcpBackend } from "../../../declarations/HechoenOaxaca-icp-backend";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 import Button from "react-bootstrap/Button";
-import ListGroup from "react-bootstrap/ListGroup";
 
-const NotificacionesCliente = ({ principalId }) => {
-  const [notificaciones, setNotificaciones] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  // Fetch notificaciones del backend
-  const fetchNotificaciones = async () => {
-    try {
-      setLoading(true);
-      const notificacionesRes = await HechoenOaxacaIcpBackend.getNotificacionesByCliente(
-        principalId
-      );
-      setNotificaciones(notificacionesRes);
-    } catch (error) {
-      console.error("Error al cargar notificaciones:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotificaciones();
-  }, [principalId]);
+const NotificacionesCliente = () => {
+  const navigate = useNavigate();
 
   return (
-    <div className="notificaciones-cliente container mt-4">
-      <h2 className="text-center mb-4">Mis Notificaciones</h2>
-
-      {loading ? (
-        <p className="text-center">Cargando notificaciones...</p>
-      ) : notificaciones.length > 0 ? (
-        <ListGroup>
-          {notificaciones.map((notificacion, index) => (
-            <ListGroup.Item key={index} className="d-flex justify-content-between align-items-start">
-              <div>
-                <h5 className="mb-1">{notificacion.titulo}</h5>
-                <p className="mb-1">{notificacion.mensaje}</p>
-                <small className="text-muted">
-                  Fecha: {new Date(notificacion.fecha).toLocaleDateString()}
-                </small>
-              </div>
-              <Button variant="primary" size="sm" onClick={() => alert("Notificación leída")}>
-                Marcar como leído
-              </Button>
-            </ListGroup.Item>
-          ))}
-        </ListGroup>
-      ) : (
-        <p className="text-center">No tienes notificaciones nuevas.</p>
-      )}
+    <div className="notificaciones-cliente text-center py-5">
+      <div className="container">
+        <div className="alert alert-info" style={{ maxWidth: "600px", margin: "0 auto" }}>
+          <h3>🔔 Módulo en construcción</h3>
+          <p className="mt-3">
+            El sistema de notificaciones estará disponible próximamente.
+            Recibirás alertas sobre el estado de tus pedidos y promociones.
+          </p>
+          <Button 
+            variant="primary" 
+            onClick={() => navigate("/cliente-dashboard")}
+            className="mt-3"
+          >
+            Volver a mi panel
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

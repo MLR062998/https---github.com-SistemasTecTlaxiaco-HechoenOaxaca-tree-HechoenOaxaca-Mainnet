@@ -2,7 +2,16 @@
   "HechoenOaxaca-icp-backend": {
     "ic": "cqup7-hqaaa-aaaai-q3wca-cai"
   },
+
   "HechoenOaxaca-icp-frontend": {
     "ic": "cxvjl-kiaaa-aaaai-q3wcq-cai"
+  },
+
+  "HechoenOaxaca-icp-backend-v2": {
+    "ic": "2ekj4-4qaaa-aaaae-qj2pq-cai"
+  },
+
+  "HechoenOaxaca-icp-frontend-v2": {
+    "ic": "4wzm3-cyaaa-aaaac-bfbla-cai"
   }
 }
