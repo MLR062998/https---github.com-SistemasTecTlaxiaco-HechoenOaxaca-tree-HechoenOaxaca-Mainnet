@@ -251,27 +251,39 @@ export const AuthProvider = ({ children }) => {
             error: null,
           });
 
-          // Rutas
-          const routes = {
-            Artesano:
+          // =====================================================
+          // 🔥 NUEVO: Definir rutas permitidas por rol
+          // =====================================================
+          const allowedRoutes = {
+            Artesano: [
               "/artesano-dashboard",
-
-            Cliente:
+            ],
+            Cliente: [
               "/cliente-dashboard",
-
-            Intermediario:
+              "/carrito",
+              "/notificaciones-cliente",
+              "/checkout-confirmado",
+            ],
+            Intermediario: [
               "/intermediario-dashboard",
+            ],
           };
 
-          const targetRoute =
-            routes[userRol] ||
-            "/registro";
+          const targetRoute = {
+            Artesano: "/artesano-dashboard",
+            Cliente: "/cliente-dashboard",
+            Intermediario: "/intermediario-dashboard",
+          }[userRol] || "/registro";
 
-          // 🔥 CORREGIDO: Redirige solo si NO estás dentro del dashboard
-          // Permite subrutas como /artesano-dashboard/nuevo-producto
-          if (
-            !window.location.pathname.startsWith(targetRoute)
-          ) {
+          // Verificar si la ruta actual está permitida para el rol
+          const isAllowed = (
+            allowedRoutes[userRol] || []
+          ).some((route) =>
+            window.location.pathname.startsWith(route)
+          );
+
+          // Redirigir solo si la ruta NO está permitida
+          if (!isAllowed) {
             navigate(targetRoute, { replace: true });
           }
         }
