@@ -3,55 +3,64 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Container, Card, Spinner, Alert, Badge } from "react-bootstrap";
 import { FaShieldAlt, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
-import { useAuthContext } from "./authContext";
+import { HttpAgent, Actor } from "@dfinity/agent";
+import { idlFactory } from "declarations/HechoenOaxaca-icp-backend-v2";
+import { AnonymousIdentity } from "@dfinity/agent";
 
 const VerificarProducto = () => {
   const { id } = useParams();
-  const { actor } = useAuthContext();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [producto, setProducto] = useState(null);
-  const [verificacion, setVerificacion] = useState(null);
+
+  const BACKEND_CANISTER_ID =
+    import.meta.env.VITE_BACKEND_CANISTER_ID ||
+    "2ekj4-4qaaa-aaaae-qj2pq-cai";
 
   useEffect(() => {
     const verificar = async () => {
-      if (!actor) {
-        setError("No se pudo conectar con el backend");
-        setLoading(false);
-        return;
-      }
-
       try {
-        // Primero obtener el producto
+        const agent = new HttpAgent({
+          identity: new AnonymousIdentity(),
+          host: "https://icp-api.io",
+        });
+
+        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+          await agent.fetchRootKey();
+        }
+
+        const actor = Actor.createActor(idlFactory, {
+          agent,
+          canisterId: BACKEND_CANISTER_ID,
+        });
+
         const result = await actor.verificarProducto(id);
-        
+
         if ("ok" in result) {
           const data = result.ok;
-          setVerificacion(data);
-          
-          // También obtenemos los detalles del producto para mostrar más info
-          // Si no tenemos un método específico, usamos la info que ya viene
           setProducto({
             id: id,
             valido: data.valido,
             hashGuardado: data.hashGuardado,
             hashCalculado: data.hashCalculado,
-            artesano: data.artesano,
-            fecha: data.fecha
+            artesano: typeof data.artesano === 'object' && data.artesano.toText
+              ? data.artesano.toText()
+              : String(data.artesano),
+            fecha: data.fecha,
           });
         } else {
           setError("Producto no encontrado o no verificado");
         }
       } catch (err) {
         console.error("Error verificando producto:", err);
-        setError("Error al verificar el producto. Intenta nuevamente.");
+        setError("No se pudo conectar con el backend. Intenta nuevamente.");
       } finally {
         setLoading(false);
       }
     };
 
     verificar();
-  }, [id, actor]);
+  }, [id]);
 
   if (loading) {
     return (
@@ -69,7 +78,9 @@ const VerificarProducto = () => {
           <FaTimesCircle className="me-2" />
           {error}
         </Alert>
-        <Link to="/" className="btn btn-secondary">Volver al inicio</Link>
+        <Link to="/" className="btn btn-secondary">
+          Volver al inicio
+        </Link>
       </Container>
     );
   }
@@ -84,10 +95,10 @@ const VerificarProducto = () => {
           </h2>
         </Card.Header>
         <Card.Body className="p-4">
-          {verificacion && (
+          {producto && (
             <>
               <div className="text-center mb-4">
-                {verificacion.valido ? (
+                {producto.valido ? (
                   <Badge bg="success" className="p-3 fs-5">
                     <FaCheckCircle className="me-2" />
                     ✔ Producto auténtico
@@ -107,30 +118,35 @@ const VerificarProducto = () => {
 
               <div className="mb-3">
                 <h5>Hash guardado</h5>
-                <code className="text-break">{verificacion.hashGuardado}</code>
+                <code className="text-break">{producto.hashGuardado}</code>
               </div>
 
               <div className="mb-3">
                 <h5>Hash calculado</h5>
-                <code className="text-break">{verificacion.hashCalculado}</code>
+                <code className="text-break">{producto.hashCalculado}</code>
               </div>
 
               <div className="mb-3">
                 <h5>Artesano</h5>
-                <code className="text-break">{verificacion.artesano}</code>
+                <code className="text-break">{producto.artesano}</code>
               </div>
 
-              {verificacion.fecha && (
+              {producto.fecha && (
                 <div className="mb-3">
                   <h5>Fecha de certificación</h5>
-                  <p>{new Date(Number(verificacion.fecha) / 1_000_000).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <p>
+                    {new Date(Number(producto.fecha) / 1_000_000).toLocaleDateString(
+                      "es-MX",
+                      { year: "numeric", month: "long", day: "numeric" }
+                    )}
+                  </p>
                 </div>
               )}
 
               <hr />
-
               <p className="text-muted text-center">
-                Este producto ha sido verificado por el sistema de autenticidad de <strong>Hecho en Oaxaca</strong>.
+                Este producto ha sido verificado por el sistema de autenticidad de{" "}
+                <strong>Hecho en Oaxaca</strong>.
               </p>
 
               <div className="text-center mt-4">

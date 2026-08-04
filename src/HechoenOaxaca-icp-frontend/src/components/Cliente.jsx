@@ -1,4 +1,4 @@
-// src/components/ClienteDashboard.jsx - VERSIÓN CORREGIDA (sin Wallet)
+// src/components/ClienteDashboard.jsx - VERSIÓN CORREGIDA (con carrito backend)
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Button from "react-bootstrap/Button";
@@ -10,7 +10,6 @@ import { FaUser, FaMapMarkerAlt, FaPhone, FaSearch, FaFilter } from "react-icons
 import DashboardLayout from "./DashboardLayout";
 import { useAuthContext } from "./authContext";
 import Compra from "./Compra";
-import { useCarrito } from "../context/CarritoContext";
 import { processProductsList } from "../utils/imageUtils";
 import "../cliente.scss";
 
@@ -18,7 +17,6 @@ const ClienteDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { actor, principalId } = useAuthContext();
-  const { agregarAlCarrito } = useCarrito();
 
   const [productos, setProductos] = useState([]);
   const [perfil, setPerfil] = useState(null);
@@ -28,13 +26,15 @@ const ClienteDashboard = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-
   const [editFormData, setEditFormData] = useState({
     nombreCompleto: "",
     lugarOrigen: "",
     telefono: "",
   });
 
+  // ============================================================
+  // Cargar datos (productos y perfil)
+  // ============================================================
   useEffect(() => {
     const fetchData = async () => {
       if (!actor || !principalId) return;
@@ -63,18 +63,23 @@ const ClienteDashboard = () => {
     fetchData();
   }, [actor, principalId]);
 
+  // ============================================================
+  // Filtros
+  // ============================================================
   const filteredProducts = productos.filter((producto) => {
     const matchSearch = producto.nombre.toLowerCase().includes(searchTerm.toLowerCase());
     const matchCategory = selectedCategory ? producto.tipo === selectedCategory : true;
     return matchSearch && matchCategory;
   });
 
+  // ============================================================
+  // Editar perfil
+  // ============================================================
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditFormData({ ...editFormData, [name]: value });
   };
 
-  // ✅ CORREGIDO: usar actor.actualizarPerfil (no actor.editarPerfil)
   const handleSaveChanges = async () => {
     try {
       const result = await actor.actualizarPerfil(
@@ -97,16 +102,53 @@ const ClienteDashboard = () => {
     }
   };
 
+  // ============================================================
+  // ✅ NUEVA FUNCIÓN: Agregar al carrito usando el BACKEND
+  // ============================================================
+  const agregarAlCarritoBackend = async (producto) => {
+    try {
+      const resultado = await actor.agregarAlCarrito(producto.id);
+      if ("ok" in resultado) {
+        alert("✅ Producto agregado al carrito");
+        // Opcional: redirigir al carrito
+        navigate("/carrito");
+      } else if ("err" in resultado) {
+        const mensaje = traducirError(resultado.err);
+        alert(`❌ ${mensaje}`);
+      }
+    } catch (error) {
+      console.error("Error al agregar al carrito:", error);
+      alert("Error de conexión. Intenta nuevamente.");
+    }
+  };
+
+  // ============================================================
+  // Función auxiliar para errores del backend
+  // ============================================================
+  const traducirError = (err) => {
+    if (!err) return "Error desconocido";
+    if (typeof err === "object") {
+      if ("ErrorValidacion" in err) return err.ErrorValidacion;
+      if ("StockInsuficiente" in err) return "No hay suficiente stock.";
+      if ("ProductoNoExiste" in err) return "El producto ya no está disponible.";
+      if ("PermisoDenegado" in err) return "No tienes permiso para agregar este producto.";
+      if ("ErrorLedger" in err) return `Error de pago: ${err.ErrorLedger?.mensaje || err.ErrorLedger?.codigo}`;
+      if ("ErrorInterno" in err) return "Error interno del sistema.";
+    }
+    return JSON.stringify(err);
+  };
+
+  // ============================================================
+  // Handlers para modales
+  // ============================================================
   const abrirDetalleProducto = (producto) => {
     setSelectedProduct(producto);
     setShowDetailModal(true);
   };
 
-  const agregarAlCarritoDesdeCard = (producto) => {
-    agregarAlCarrito(producto);
-    alert("Producto agregado al carrito");
-  };
-
+  // ============================================================
+  // Renderizado
+  // ============================================================
   return (
     <DashboardLayout>
       <div className="cliente-dashboard">
@@ -145,9 +187,8 @@ const ClienteDashboard = () => {
             </div>
           )}
 
-          {/* Botones de acción - ELIMINADO EL BOTÓN WALLET */}
+          {/* Botones de acción */}
           <div className="action-buttons-compact">
-            {/* ❌ Eliminado el botón que navegaba a /wallet */}
             <Button variant="light" className="action-btn-compact" onClick={() => navigate("/notificaciones-cliente")}>
               🔔 Notificaciones
             </Button>
@@ -261,7 +302,7 @@ const ClienteDashboard = () => {
                             variant="success" 
                             size="sm"
                             className="cart-btn-compact"
-                            onClick={() => agregarAlCarritoDesdeCard(producto)}
+                            onClick={() => agregarAlCarritoBackend(producto)}
                           >
                             + Carrito
                           </Button>

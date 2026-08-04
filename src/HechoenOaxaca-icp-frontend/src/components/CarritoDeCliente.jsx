@@ -7,10 +7,11 @@ import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import Tab from "react-bootstrap/Tab";
 import Tabs from "react-bootstrap/Tabs";
-import { FaTrash, FaExclamationTriangle, FaHistory, FaCheckCircle } from "react-icons/fa";
+import { FaTrash, FaExclamationTriangle, FaHistory, FaCheckCircle, FaShieldAlt } from "react-icons/fa";
+import { Badge } from "react-bootstrap";
 
 import { useAuthContext } from "./authContext";
-import PagoQR from "./PagoQR"; // ← Importa tu componente QR
+import PagoQR from "./PagoQR";
 
 const CarritoDeCliente = () => {
   const navigate = useNavigate();
@@ -44,34 +45,51 @@ const CarritoDeCliente = () => {
   // Función para cargar el carrito real desde el backend
   // ============================================================
   const cargarCarrito = useCallback(async () => {
-    if (!actor) return;
+    if (!actor) {
+      console.warn("⏳ Actor no disponible, no se puede cargar carrito.");
+      return;
+    }
     setCargandoCarrito(true);
     try {
+      console.log("📞 Obteniendo items del carrito desde el backend...");
       const items = await actor.verCarrito();
+      console.log("✅ Items del carrito (raw):", items);
+
+      console.log("📞 Obteniendo lista de productos...");
       const productos = await actor.listarProductos();
+      console.log("✅ Productos disponibles (raw):", productos);
+
       const productosEnCarrito = items
         .map((item) => {
           const producto = productos.find((p) => p.id === item.productoId);
-          if (!producto) return null;
+          if (!producto) {
+            console.warn(`⚠️ Producto no encontrado para item con ID: ${item.productoId}`);
+            return null;
+          }
           return {
             ...producto,
             precioSnapshot: item.precioSnapshot,
           };
         })
         .filter(Boolean);
+
+      console.log("✅ Productos en carrito procesados:", productosEnCarrito);
+
       const totalE8s = productosEnCarrito.reduce((acc, p) => acc + Number(p.precioSnapshot), 0);
       const totalICP = totalE8s / 100_000_000;
+
       setCarritoItems(items);
       setProductosCarrito(productosEnCarrito);
       setTotal(totalICP);
     } catch (err) {
-      console.error("Error al cargar carrito:", err);
+      console.error("❌ Error al cargar carrito:", err);
       setError("No se pudo cargar el carrito. Intenta más tarde.");
     } finally {
       setCargandoCarrito(false);
     }
   }, [actor]);
 
+  // Recargar carrito al montar y cada vez que cambie el actor
   useEffect(() => {
     cargarCarrito();
   }, [cargarCarrito]);
@@ -154,7 +172,7 @@ const CarritoDeCliente = () => {
     navigate("/checkout-confirmado", {
       state: {
         total: total,
-        productos: productosCarrito.length,
+        productos: productosCarrito,
       },
     });
   };
@@ -259,23 +277,33 @@ const CarritoDeCliente = () => {
             </div>
           ) : (
             <>
-              {productosCarrito.map((producto) => (
-                <Card key={producto.id} className="mb-3">
-                  <Card.Body className="d-flex justify-content-between align-items-center">
-                    <div>
-                      <h6>{producto.nombre}</h6>
-                      <p className="text-success">ICP {formatearPrecio(producto)}</p>
-                    </div>
-                    <Button
-                      variant="outline-danger"
-                      onClick={() => confirmarEliminarProducto(producto)}
-                      disabled={procesando}
-                    >
-                      <FaTrash />
-                    </Button>
-                  </Card.Body>
-                </Card>
-              ))}
+              {productosCarrito.map((producto) => {
+                const tieneCertificado = producto.hash && producto.firma;
+                return (
+                  <Card key={producto.id} className="mb-3">
+                    <Card.Body className="d-flex justify-content-between align-items-center">
+                      <div>
+                        <div className="d-flex align-items-center gap-2">
+                          <h6 className="mb-0">{producto.nombre}</h6>
+                          {tieneCertificado && (
+                            <Badge bg="success" className="ms-1">
+                              <FaShieldAlt className="me-1" size={10} /> Cert
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-success">ICP {formatearPrecio(producto)}</p>
+                      </div>
+                      <Button
+                        variant="outline-danger"
+                        onClick={() => confirmarEliminarProducto(producto)}
+                        disabled={procesando}
+                      >
+                        <FaTrash />
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                );
+              })}
 
               <Card className="mt-4 border-success">
                 <Card.Body className="text-center">

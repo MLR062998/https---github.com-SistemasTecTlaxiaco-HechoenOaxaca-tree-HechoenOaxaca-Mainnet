@@ -1,25 +1,26 @@
 import React, { useState } from 'react';
-import { Modal, Button, Alert, Spinner } from 'react-bootstrap';
+import { Modal, Button, Alert, Spinner, Badge } from 'react-bootstrap';
 import Carousel from 'react-bootstrap/Carousel';
-import { useCarrito } from '../context/CarritoContext';
+import { QRCodeSVG } from 'qrcode.react';
+import { FaShieldAlt, FaQrcode } from 'react-icons/fa';
 import { processProductImages } from '../utils/imageUtils';
 import { useAuthContext } from "./authContext";
 
 const Compra = ({ show, onClose, product, onAddToCart }) => {
-  const { agregarAlCarrito } = useCarrito();
-  const { isAuthenticated } = useAuthContext();
+  const { actor, isAuthenticated } = useAuthContext();
   const [addingToCart, setAddingToCart] = useState(false);
   const [showAuthAlert, setShowAuthAlert] = useState(false);
+  const [mostrarQR, setMostrarQR] = useState(false);
 
   if (!product) return null;
 
-  // ✅ CORREGIDO: Procesar producto para asegurar imágenes correctas
+  // ✅ Procesar producto para asegurar imágenes correctas
   const productoProcesado = processProductImages(product);
   const precioICP = productoProcesado.precioICP;
+  const tieneCertificado = productoProcesado.hash && productoProcesado.firma;
 
-  // ✅ FUNCIÓN MEJORADA PARA AGREGAR AL CARRITO
+  // ✅ FUNCIÓN MEJORADA PARA AGREGAR AL CARRITO (usando backend)
   const handleAddToCart = async () => {
-    // Verificar autenticación primero
     if (!isAuthenticated) {
       setShowAuthAlert(true);
       setTimeout(() => setShowAuthAlert(false), 5000);
@@ -29,38 +30,65 @@ const Compra = ({ show, onClose, product, onAddToCart }) => {
     setAddingToCart(true);
     
     try {
-      // Si se pasa la prop onAddToCart, usarla (para el modal en ClienteDashboard)
-      if (onAddToCart) {
-        await onAddToCart(productoProcesado);
-      } else {
-        // Si no, usar la función del contexto directamente
-        await agregarAlCarrito(productoProcesado);
-      }
+      // 🔥 Usar el backend directamente (no el contexto)
+      const resultado = await actor.agregarAlCarrito(productoProcesado.id);
       
-      // Cerrar modal después de agregar
-      setTimeout(() => {
+      if ("ok" in resultado) {
+        // Si se pasa onAddToCart, llamarlo (por compatibilidad)
+        if (onAddToCart) {
+          await onAddToCart(productoProcesado);
+        }
+        setTimeout(() => {
+          setAddingToCart(false);
+          onClose();
+          alert("✅ Producto agregado al carrito");
+        }, 500);
+      } else if ("err" in resultado) {
+        const mensaje = traducirError(resultado.err);
+        alert(`❌ ${mensaje}`);
         setAddingToCart(false);
-        onClose();
-      }, 500);
-      
+      }
     } catch (error) {
       console.error('Error agregando al carrito:', error);
+      alert("Error de conexión. Intenta nuevamente.");
       setAddingToCart(false);
     }
   };
 
+  const traducirError = (err) => {
+    if (!err) return "Error desconocido";
+    if (typeof err === "object") {
+      if ("ErrorValidacion" in err) return err.ErrorValidacion;
+      if ("StockInsuficiente" in err) return "No hay suficiente stock.";
+      if ("ProductoNoExiste" in err) return "El producto ya no está disponible.";
+      if ("PermisoDenegado" in err) return "No tienes permiso.";
+    }
+    return JSON.stringify(err);
+  };
+
   const handleClose = () => {
     setShowAuthAlert(false);
+    setMostrarQR(false);
     onClose();
   };
+
+  // URL para el QR (página de verificación pública)
+  const verificarUrl = `${window.location.origin}/verificar/${productoProcesado.id}`;
 
   return (
     <Modal show={show} onHide={handleClose} centered size="lg">
       <Modal.Header closeButton>
-        <Modal.Title>🛍️ Detalles del Producto</Modal.Title>
+        <Modal.Title>
+          🛍️ Detalles del Producto
+          {tieneCertificado && (
+            <Badge bg="success" className="ms-2">
+              <FaShieldAlt className="me-1" /> Certificado
+            </Badge>
+          )}
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        {/* ✅ ALERTA DE AUTENTICACIÓN */}
+        {/* ALERTA DE AUTENTICACIÓN */}
         {showAuthAlert && (
           <Alert variant="warning" className="mb-3">
             <Alert.Heading>¡Inicia sesión!</Alert.Heading>
@@ -106,6 +134,56 @@ const Compra = ({ show, onClose, product, onAddToCart }) => {
                 </span>
               </p>
             )}
+
+            {/* 🔥 SECCIÓN DE CERTIFICADO DE AUTENTICIDAD */}
+            {tieneCertificado ? (
+              <div className="mt-3 p-2 bg-light rounded border">
+                <h6 className="text-success">
+                  <FaShieldAlt className="me-2" />
+                  Certificado de Autenticidad
+                </h6>
+                <div className="small">
+                  <p><strong>Hash:</strong> <code className="text-break">{productoProcesado.hash}</code></p>
+                  {productoProcesado.firma && (
+                    <p><strong>Firma digital:</strong> <code className="text-break">{productoProcesado.firma}</code></p>
+                  )}
+                  {productoProcesado.certificado && (
+                    <p><strong>Certificado:</strong> {productoProcesado.certificado}</p>
+                  )}
+                  {productoProcesado.fechaCertificacion && (
+                    <p><strong>Fecha de certificación:</strong> {new Date(Number(productoProcesado.fechaCertificacion) / 1_000_000).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  )}
+                </div>
+
+                {/* QR */}
+                <div className="mt-2 text-center">
+                  <Button 
+                    variant="outline-primary" 
+                    size="sm"
+                    onClick={() => setMostrarQR(!mostrarQR)}
+                  >
+                    <FaQrcode className="me-1" />
+                    {mostrarQR ? 'Ocultar QR' : 'Ver QR de verificación'}
+                  </Button>
+                  {mostrarQR && (
+                    <div className="mt-2 d-flex justify-content-center">
+                      <QRCodeSVG
+                        value={verificarUrl}
+                        size={150}
+                        level="H"
+                        marginSize={2}
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3 text-muted small">
+                <FaShieldAlt className="me-1" /> Este producto no cuenta con certificado de autenticidad.
+              </div>
+            )}
           </div>
 
           <div className="col-md-6">
@@ -129,16 +207,6 @@ const Compra = ({ show, onClose, product, onAddToCart }) => {
                           onError={(e) => {
                             console.error(`Error loading image ${idx}:`, src);
                             e.target.style.display = 'none';
-                            // Mostrar placeholder si hay error
-                            const placeholder = e.target.parentNode;
-                            if (placeholder) {
-                              placeholder.innerHTML = `
-                                <div class="bg-light d-flex align-items-center justify-content-center text-muted" 
-                                     style="height: 250px; width: 100%; border-radius: 10px;">
-                                  📷 Imagen no disponible
-                                </div>
-                              `;
-                            }
                           }}
                         />
                       </div>
@@ -165,7 +233,6 @@ const Compra = ({ show, onClose, product, onAddToCart }) => {
           ✕ Cerrar
         </Button>
         
-        {/* ✅ BOTÓN MEJORADO PARA AGREGAR AL CARRITO */}
         <Button 
           variant="success" 
           onClick={handleAddToCart}

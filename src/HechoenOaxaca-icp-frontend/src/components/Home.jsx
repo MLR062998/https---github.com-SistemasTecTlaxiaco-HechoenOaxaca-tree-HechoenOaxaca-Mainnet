@@ -9,13 +9,11 @@ import Alert from "react-bootstrap/Alert";
 import { FaShoppingCart, FaEye, FaStar, FaTruck, FaShieldAlt, FaHeart } from "react-icons/fa";
 import Compra from "./Compra";
 import { processProductsList } from "../utils/imageUtils";
-import { useCarrito } from "../context/CarritoContext";
 import "../index.scss";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const Home = () => {
   const { actor, isAuthenticated } = useAuthContext();
-  const { agregarAlCarrito } = useCarrito();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -72,12 +70,11 @@ const Home = () => {
     fetchProducts();
   }, [actor]);
 
-  const handleShowDetails = (product) => {
-    setSelectedProduct(product);
-    setShowModal(true);
-  };
-
-  const handleAddToCart = (product, e) => {
+  // ============================================================
+  // ✅ FUNCIONES MODIFICADAS: Usan el backend directamente
+  // ============================================================
+  
+  const handleAddToCart = async (product, e) => {
     if (e) {
       e.stopPropagation();
     }
@@ -89,23 +86,49 @@ const Home = () => {
     }
 
     try {
-      agregarAlCarrito(product);
-      alert("✅ Producto agregado al carrito");
+      const resultado = await actor.agregarAlCarrito(product.id);
+      if ("ok" in resultado) {
+        alert("✅ Producto agregado al carrito");
+      } else if ("err" in resultado) {
+        const mensaje = traducirError(resultado.err);
+        alert(`❌ ${mensaje}`);
+      }
     } catch (error) {
       console.error("Error agregando al carrito:", error);
-      alert("❌ Error al agregar el producto al carrito");
+      alert("❌ Error de conexión. Intenta nuevamente.");
     }
   };
 
-  const handleAddToCartFromModal = (product) => {
+  const handleAddToCartFromModal = async (product) => {
     try {
-      agregarAlCarrito(product);
-      alert("✅ Producto agregado al carrito");
-      setShowModal(false);
+      const resultado = await actor.agregarAlCarrito(product.id);
+      if ("ok" in resultado) {
+        alert("✅ Producto agregado al carrito");
+        setShowModal(false);
+      } else if ("err" in resultado) {
+        const mensaje = traducirError(resultado.err);
+        alert(`❌ ${mensaje}`);
+      }
     } catch (error) {
       console.error("Error agregando al carrito:", error);
-      alert("❌ Error al agregar el producto al carrito");
+      alert("❌ Error de conexión. Intenta nuevamente.");
     }
+  };
+
+  const traducirError = (err) => {
+    if (!err) return "Error desconocido";
+    if (typeof err === "object") {
+      if ("ErrorValidacion" in err) return err.ErrorValidacion;
+      if ("StockInsuficiente" in err) return "No hay suficiente stock.";
+      if ("ProductoNoExiste" in err) return "El producto ya no está disponible.";
+      if ("PermisoDenegado" in err) return "No tienes permiso.";
+    }
+    return JSON.stringify(err);
+  };
+
+  const handleShowDetails = (product) => {
+    setSelectedProduct(product);
+    setShowModal(true);
   };
 
   // Agrupar productos por categoría para mostrar mejor

@@ -5,13 +5,11 @@ import { Button, Card, Container, Row, Col, Spinner, Alert, Badge } from "react-
 import { FaShoppingCart, FaCreditCard, FaArrowLeft, FaExclamationTriangle, FaShieldAlt, FaQrcode } from "react-icons/fa";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuthContext } from "./authContext";
-import { useCarrito } from "../context/CarritoContext";
 
 const ProductoDetalle = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { actor, authState } = useAuthContext();
-  const { agregarAlCarrito } = useCarrito();
   
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState("");
@@ -19,28 +17,48 @@ const ProductoDetalle = () => {
 
   const producto = location.state;
 
-  const handleAgregarAlCarrito = () => {
+  // ============================================================
+  // Agregar al carrito usando el BACKEND
+  // ============================================================
+  const handleAgregarAlCarrito = async () => {
     if (!producto) {
       setError("Producto no disponible");
       return;
     }
-    
+
     try {
-      const productoConPrecio = {
-        ...producto,
-        precioICP: producto.precioICP || (Number(producto.precio || 0) / 100_000_000)
-      };
+      console.log("🛒 Agregando producto al carrito (backend):", producto.id);
+      const resultado = await actor.agregarAlCarrito(producto.id);
       
-      agregarAlCarrito(productoConPrecio);
-      setError("");
-      alert("✅ Producto agregado al carrito");
-      navigate("/carrito");
+      if ("ok" in resultado) {
+        alert("✅ Producto agregado al carrito");
+        navigate("/carrito");
+      } else if ("err" in resultado) {
+        const mensaje = traducirError(resultado.err);
+        setError(`Error: ${mensaje}`);
+      }
     } catch (err) {
       console.error("Error agregando al carrito:", err);
-      setError("Error al agregar producto al carrito");
+      setError("Error de conexión. Intenta nuevamente.");
     }
   };
 
+  const traducirError = (err) => {
+    if (!err) return "Error desconocido";
+    if (typeof err === "object") {
+      if ("ErrorValidacion" in err) return err.ErrorValidacion;
+      if ("StockInsuficiente" in err) return "No hay suficiente stock.";
+      if ("ProductoNoExiste" in err) return "El producto ya no está disponible.";
+      if ("PermisoDenegado" in err) return "No tienes permiso para agregar este producto.";
+      if ("ErrorLedger" in err) return `Error de pago: ${err.ErrorLedger?.mensaje || err.ErrorLedger?.codigo}`;
+      if ("ErrorInterno" in err) return "Error interno del sistema.";
+    }
+    return JSON.stringify(err);
+  };
+
+  // ============================================================
+  // Compra directa (pasa el producto al checkout)
+  // ============================================================
   const handleCompraDirecta = async () => {
     if (!producto) {
       setError("Producto no disponible");
@@ -57,17 +75,16 @@ const ProductoDetalle = () => {
 
     try {
       console.log("🛒 Iniciando compra directa del producto:", producto.id);
-      const ids = [producto.id];
-      
-      const res = await actor.realizarCompra(ids);
+      const res = await actor.realizarCompra([producto.id]);
       console.log("📦 Respuesta del backend:", res);
 
       if (res && "ok" in res) {
         console.log("✅ Compra directa exitosa!");
+        // ✅ PASAMOS EL PRODUCTO COMPLETO EN EL STATE
         navigate("/checkout-confirmado", { 
           state: { 
             total: producto.precioICP || (Number(producto.precio || 0) / 100_000_000),
-            productos: 1,
+            productos: [producto], // array con el producto
             detalles: res.ok
           } 
         });
@@ -89,35 +106,21 @@ const ProductoDetalle = () => {
 
   const obtenerMensajeError = (error) => {
     if (!error) return "Error desconocido";
-    
     if (typeof error === 'object') {
-      if ('ErrorValidacion' in error) {
-        return `Error de validación: ${error.ErrorValidacion}`;
-      }
-      if ('ErrorLedger' in error) {
-        return `Error de pago: ${error.ErrorLedger.mensaje || error.ErrorLedger.codigo}`;
-      }
-      if ('ProductoNoExiste' in error) {
-        return "El producto no existe o no está disponible";
-      }
-      if ('SaldoInsuficiente' in error) {
-        return "Saldo insuficiente para completar la compra";
-      }
-      if ('PermisoDenegado' in error) {
-        return "No tienes permisos para realizar esta compra";
-      }
-      if ('UsuarioNoExiste' in error) {
-        return "Debes estar registrado para realizar compras";
-      }
+      if ('ErrorValidacion' in error) return `Error de validación: ${error.ErrorValidacion}`;
+      if ('ErrorLedger' in error) return `Error de pago: ${error.ErrorLedger.mensaje || error.ErrorLedger.codigo}`;
+      if ('ProductoNoExiste' in error) return "El producto no existe o no está disponible";
+      if ('SaldoInsuficiente' in error) return "Saldo insuficiente para completar la compra";
+      if ('PermisoDenegado' in error) return "No tienes permisos para realizar esta compra";
+      if ('UsuarioNoExiste' in error) return "Debes estar registrado para realizar compras";
     }
-    
-    if (typeof error === 'string') {
-      return error;
-    }
-    
+    if (typeof error === 'string') return error;
     return JSON.stringify(error);
   };
 
+  // ============================================================
+  // Renderizado
+  // ============================================================
   if (!producto) {
     return (
       <Container className="mt-5 text-center">
@@ -135,8 +138,6 @@ const ProductoDetalle = () => {
 
   const precioICP = producto.precioICP || (Number(producto.precio || 0) / 100_000_000);
   const tieneCertificado = producto.hash && producto.firma;
-
-  // URL para el QR (página de verificación pública)
   const verificarUrl = `${window.location.origin}/verificar/${producto.id}`;
 
   return (
@@ -166,11 +167,7 @@ const ProductoDetalle = () => {
                 variant="top"
                 src={producto.imagenes[0]}
                 alt={producto.nombre}
-                style={{ 
-                  maxHeight: "500px", 
-                  objectFit: "contain",
-                  padding: "20px"
-                }}
+                style={{ maxHeight: "500px", objectFit: "contain", padding: "20px" }}
               />
             ) : (
               <div className="text-center p-5 bg-light">
@@ -217,7 +214,7 @@ const ProductoDetalle = () => {
                 </p>
               </div>
 
-              {/* 🔥 SECCIÓN DE CERTIFICADO DE AUTENTICIDAD */}
+              {/* Certificado */}
               {tieneCertificado ? (
                 <div className="mb-3 p-3 bg-light rounded border">
                   <h5 className="text-success">
@@ -236,8 +233,6 @@ const ProductoDetalle = () => {
                       <p><strong>Fecha de certificación:</strong> {new Date(Number(producto.fechaCertificacion) / 1_000_000).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                     )}
                   </div>
-
-                  {/* QR - CORREGIDO con QRCodeSVG */}
                   <div className="mt-2 text-center">
                     <Button 
                       variant="outline-primary" 
@@ -274,7 +269,7 @@ const ProductoDetalle = () => {
                 </div>
               )}
 
-              {/* Botones de acción */}
+              {/* Botones */}
               <div className="mt-auto d-grid gap-3">
                 <Button 
                   variant="success" 
