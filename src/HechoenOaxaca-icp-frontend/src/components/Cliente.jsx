@@ -1,4 +1,4 @@
-// src/components/ClienteDashboard.jsx - VERSIÓN CORREGIDA (con carrito backend)
+// src/components/ClienteDashboard.jsx - VERSIÓN MEJORADA (con badges de stock)
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Button from "react-bootstrap/Button";
@@ -103,14 +103,13 @@ const ClienteDashboard = () => {
   };
 
   // ============================================================
-  // ✅ NUEVA FUNCIÓN: Agregar al carrito usando el BACKEND
+  // ✅ Agregar al carrito usando el BACKEND
   // ============================================================
   const agregarAlCarritoBackend = async (producto) => {
     try {
       const resultado = await actor.agregarAlCarrito(producto.id);
       if ("ok" in resultado) {
         alert("✅ Producto agregado al carrito");
-        // Opcional: redirigir al carrito
         navigate("/carrito");
       } else if ("err" in resultado) {
         const mensaje = traducirError(resultado.err);
@@ -221,6 +220,8 @@ const ClienteDashboard = () => {
               <option value="Dulces">Dulces Tradicionales</option>
               <option value="Artesania">Artesanías</option>
               <option value="Textil">Textiles</option>
+              <option value="Ceramica">Cerámica</option>
+              <option value="Joyeria">Joyería</option>
             </Form.Select>
           </div>
         </div>
@@ -250,68 +251,97 @@ const ClienteDashboard = () => {
             </div>
           ) : (
             <div className="products-grid-compact">
-              {filteredProducts.map((producto) => (
-                <div key={producto.id} className="product-card-compact-wrapper">
-                  <Card className="product-card-compact">
-                    {producto.imagenes && producto.imagenes[0] ? (
-                      <div 
-                        className="product-image-compact-container"
-                        onClick={() => abrirDetalleProducto(producto)}
-                      >
-                        <Card.Img
-                          variant="top"
-                          src={producto.imagenes[0]}
-                          alt={producto.nombre}
-                          className="product-image-compact"
-                        />
-                      </div>
-                    ) : (
-                      <div 
-                        className="product-image-placeholder-compact"
-                        onClick={() => abrirDetalleProducto(producto)}
-                      >
-                        📷
-                      </div>
-                    )}
-                    
-                    <Card.Body className="product-card-body-compact">
-                      <Card.Title className="product-title-compact">{producto.nombre}</Card.Title>
+              {filteredProducts.map((producto) => {
+                // ✅ Calcular disponibilidad
+                const tieneStock = producto.activo !== false && (producto.stock || 0) > 0;
+                const stockMostrar = producto.stock || 0;
+
+                return (
+                  <div key={producto.id} className="product-card-compact-wrapper">
+                    <Card className="product-card-compact">
+                      {/* Imagen del producto con badges */}
+                      {producto.imagenes && producto.imagenes[0] ? (
+                        <div 
+                          className="product-image-compact-container"
+                          onClick={() => abrirDetalleProducto(producto)}
+                          style={{ position: 'relative' }}
+                        >
+                          <Card.Img
+                            variant="top"
+                            src={producto.imagenes[0]}
+                            alt={producto.nombre}
+                            className="product-image-compact"
+                          />
+                          {/* ✅ BADGE DE DISPONIBILIDAD */}
+                          <span className={`product-card-badge ${tieneStock ? 'badge-success' : 'badge-secondary'}`}>
+                            {tieneStock ? 'Disponible' : 'Agotado'}
+                          </span>
+                          {/* ✅ BADGE DE STOCK (si hay stock) */}
+                          {tieneStock && stockMostrar > 0 && (
+                            <span className="product-stock-badge">
+                              {stockMostrar} uds.
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div 
+                          className="product-image-placeholder-compact"
+                          onClick={() => abrirDetalleProducto(producto)}
+                          style={{ position: 'relative' }}
+                        >
+                          📷
+                          {/* ✅ BADGE DE DISPONIBILIDAD EN PLACEHOLDER */}
+                          <span className={`product-card-badge ${tieneStock ? 'badge-success' : 'badge-secondary'}`}>
+                            {tieneStock ? 'Disponible' : 'Agotado'}
+                          </span>
+                          {tieneStock && stockMostrar > 0 && (
+                            <span className="product-stock-badge">
+                              {stockMostrar} uds.
+                            </span>
+                          )}
+                        </div>
+                      )}
                       
-                      <Card.Text className="product-description-compact">
-                        {producto.descripcion?.length > 60 
-                          ? `${producto.descripcion.substring(0, 60)}...` 
-                          : producto.descripcion}
-                      </Card.Text>
-                      
-                      <div className="product-footer-compact">
-                        <Card.Text className="product-price-compact">
-                          <span className="currency">ICP</span>
-                          <span className="amount">{producto.precioICP?.toFixed(2)}</span>
+                      <Card.Body className="product-card-body-compact">
+                        <Card.Title className="product-title-compact">{producto.nombre}</Card.Title>
+                        
+                        <Card.Text className="product-description-compact">
+                          {producto.descripcion?.length > 60 
+                            ? `${producto.descripcion.substring(0, 60)}...` 
+                            : producto.descripcion}
                         </Card.Text>
                         
-                        <div className="product-actions-compact">
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm"
-                            className="detail-btn-compact"
-                            onClick={() => abrirDetalleProducto(producto)}
-                          >
-                            Ver
-                          </Button>
-                          <Button 
-                            variant="success" 
-                            size="sm"
-                            className="cart-btn-compact"
-                            onClick={() => agregarAlCarritoBackend(producto)}
-                          >
-                            + Carrito
-                          </Button>
+                        <div className="product-footer-compact">
+                          <Card.Text className="product-price-compact">
+                            <span className="currency">ICP</span>
+                            <span className="amount">{producto.precioICP?.toFixed(2)}</span>
+                          </Card.Text>
+                          
+                          <div className="product-actions-compact">
+                            <Button 
+                              variant="outline-primary" 
+                              size="sm"
+                              className="detail-btn-compact"
+                              onClick={() => abrirDetalleProducto(producto)}
+                            >
+                              Ver
+                            </Button>
+                            <Button 
+                              variant="success" 
+                              size="sm"
+                              className="cart-btn-compact"
+                              onClick={() => agregarAlCarritoBackend(producto)}
+                              disabled={!tieneStock}
+                            >
+                              {tieneStock ? '+ Carrito' : 'Agotado'}
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </div>
-              ))}
+                      </Card.Body>
+                    </Card>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

@@ -6,10 +6,10 @@ import Products from "./Products";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
+import { FaUser } from "react-icons/fa";
 import DashboardLayout from "./DashboardLayout";
 import { useAuthContext } from "./authContext";
 import "../artesano.scss";
-
 import { processProductsList } from "../utils/imageUtils";
 
 // ========= COMPONENTE ProductosPreview =========
@@ -61,8 +61,8 @@ const ProductosPreview = ({ productos, onVerTodos, onCrearNuevo, onVerProducto, 
                   <div className={`producto-card-image-placeholder ${producto.imagenes && producto.imagenes.length > 0 ? 'd-none' : ''}`}>
                     <span>📷</span>
                   </div>
-                  <span className={`producto-card-badge ${producto.activo !== false ? 'badge-success' : 'badge-secondary'}`}>
-                    {producto.activo !== false ? 'Disponible' : 'Agotado'}
+                  <span className={`producto-card-badge ${producto.activo !== false && (producto.stock || 0) > 0 ? 'badge-success' : 'badge-secondary'}`}>
+                    {(producto.activo !== false && (producto.stock || 0) > 0) ? 'Disponible' : 'Agotado'}
                   </span>
                 </div>
                 <div className="producto-card-body">
@@ -117,45 +117,6 @@ const ProductosPreview = ({ productos, onVerTodos, onCrearNuevo, onVerProducto, 
   );
 };
 
-// ========= COMPONENTE AccionesRapidas =========
-const AccionesRapidas = ({ onNavigate }) => (
-  <div className="acciones-rapidas mt-4">
-    <h5 className="acciones-rapidas-title">⚡ Acciones Rápidas</h5>
-    <div className="row g-2">
-      <div className="col-6 col-md-3">
-        <Button 
-          variant="outline-primary" 
-          className="accion-rapida-btn w-100"
-          onClick={() => onNavigate("nuevo-producto")}
-        >
-          <div className="accion-rapida-icon">🛠️</div>
-          <div className="accion-rapida-text">Crear Producto</div>
-        </Button>
-      </div>
-      <div className="col-6 col-md-3">
-        <Button 
-          variant="outline-success" 
-          className="accion-rapida-btn w-100"
-          onClick={() => onNavigate("mis-productos")}
-        >
-          <div className="accion-rapida-icon">📦</div>
-          <div className="accion-rapida-text">Mis Productos</div>
-        </Button>
-      </div>
-      <div className="col-6 col-md-3">
-        <Button 
-          variant="outline-warning" 
-          className="accion-rapida-btn w-100"
-          onClick={() => onNavigate("notificaciones")}
-        >
-          <div className="accion-rapida-icon">🔔</div>
-          <div className="accion-rapida-text">Notificaciones</div>
-        </Button>
-      </div>
-    </div>
-  </div>
-);
-
 // ========= COMPONENTE PRINCIPAL Artesano =========
 const Artesano = () => {
   const [showEditModal, setShowEditModal] = useState(false);
@@ -166,23 +127,19 @@ const Artesano = () => {
     lugarOrigen: "",
     telefono: "",
   });
-
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // 🔥 CAMBIO: extraemos 'principal' (objeto) en lugar de 'principalId'
   const { actor, principal, isLoading, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
-
   const currentPath = location.pathname;
   const isDashboard = currentPath === "/artesano-dashboard";
-  const isSubRoute = currentPath.startsWith("/artesano-dashboard/");
 
   // Cargar perfil
   useEffect(() => {
     const fetchPerfil = async () => {
-      if (!actor || !principal) return; // ahora usamos principal (objeto)
+      if (!actor || !principal) return;
       try {
         const res = await actor.obtenerUsuario();
         if ("ok" in res) {
@@ -198,41 +155,25 @@ const Artesano = () => {
         console.error("❌ Error al cargar el perfil:", error);
       }
     };
-
-    if (isAuthenticated) {
-      fetchPerfil();
-    }
+    if (isAuthenticated) fetchPerfil();
   }, [actor, principal, isAuthenticated]);
 
-  // Cargar productos con el mismo procesamiento que Products.jsx
-  // ✅ CORREGIDO: Se pasa el objeto principal (no el string)
+  // Cargar productos
   useEffect(() => {
     const fetchProductos = async () => {
       if (!actor || !principal || !isAuthenticated) return;
-      
       try {
-        console.log("📌 Llamando a listarProductosPorArtesano con principal (objeto):", principal);
-        console.log("📌 principal.toText():", principal.toText());
-
         const result = await actor.listarProductosPorArtesano(principal);
-        console.log("Productos desde backend (Artesano):", result);
-        
         const productosData = processProductsList(result);
-        console.log("Productos procesados (Artesano):", productosData);
-        
         setProductos(productosData);
-        
       } catch (error) {
         console.error("❌ Error al cargar productos:", error);
       }
     };
-
-    if (isDashboard) {
-      fetchProductos();
-    }
+    if (isDashboard) fetchProductos();
   }, [actor, principal, isAuthenticated, isDashboard]);
 
-  // Redirección si no está autenticado
+  // Redirección
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       navigate("/", { replace: true });
@@ -247,7 +188,6 @@ const Artesano = () => {
   const handleSaveChanges = async () => {
     if (!actor) return;
     try {
-      console.log("Guardando cambios:", editFormData);
       const result = await actor.actualizarPerfil(
         editFormData.nombreCompleto,
         editFormData.lugarOrigen,
@@ -300,34 +240,80 @@ const Artesano = () => {
   return (
     <DashboardLayout>
       <div className="artesano-dashboard">
-        {/* Botones superiores */}
-        <div className="botones-superiores">
-          {isDashboard && (
-            <Button 
-              variant="outline-primary" 
-              onClick={() => setShowEditModal(true)}
-              className="btn-editar ms-auto"
-            >
-              ✏️ Editar Perfil
-            </Button>
-          )}
-        </div>
-
         <Routes>
-          {/* Ruta principal del dashboard */}
           <Route
             index
             element={
               <div className="dashboard-container">
-                {/* Header con información del artesano */}
-                <div className="perfil">
-                  <h4>👤 Perfil Artesano</h4>
-                  <p><strong>Nombre:</strong> {perfil.nombreCompleto}</p>
-                  <p><strong>Origen:</strong> {perfil.lugarOrigen}</p>
-                  <p><strong>Teléfono:</strong> {perfil.telefono}</p>
+                {/* Perfil compacto integrado (estilo cliente) */}
+                <div className="perfil-compact">
+                  <div className="perfil-header">
+                    <div className="perfil-avatar">
+                      <FaUser size={24} />
+                    </div>
+                    <div className="perfil-info">
+                      <div className="perfil-item">
+                        <span className="perfil-label">Nombre:</span>
+                        <span className="perfil-value">{perfil.nombreCompleto}</span>
+                      </div>
+                      <div className="perfil-item">
+                        <span className="perfil-label">Origen:</span>
+                        <span className="perfil-value">{perfil.lugarOrigen}</span>
+                      </div>
+                      <div className="perfil-item">
+                        <span className="perfil-label">Teléfono:</span>
+                        <span className="perfil-value">{perfil.telefono}</span>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm" 
+                      className="btn-editar-integrado"
+                      onClick={() => setShowEditModal(true)}
+                    >
+                      ✏️ Editar
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Vista previa de productos */}
+                {/* Acciones Rápidas compactas (sin efecto de color) */}
+                <div className="acciones-rapidas-compact">
+                  <h5 className="acciones-rapidas-title">⚡ Acciones Rápidas</h5>
+                  <div className="row g-2">
+                    <div className="col-6 col-md-3">
+                      <Button 
+                        variant="outline-secondary" 
+                        className="accion-rapida-btn-sm w-100"
+                        onClick={() => navigate("nuevo-producto")}
+                      >
+                        <span className="accion-rapida-icon-sm">🛠️</span>
+                        <span className="accion-rapida-text-sm">Crear Producto</span>
+                      </Button>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <Button 
+                        variant="outline-secondary" 
+                        className="accion-rapida-btn-sm w-100"
+                        onClick={() => navigate("mis-productos")}
+                      >
+                        <span className="accion-rapida-icon-sm">📦</span>
+                        <span className="accion-rapida-text-sm">Mis Productos</span>
+                      </Button>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <Button 
+                        variant="outline-secondary" 
+                        className="accion-rapida-btn-sm w-100"
+                        onClick={() => navigate("notificaciones")}
+                      >
+                        <span className="accion-rapida-icon-sm">🔔</span>
+                        <span className="accion-rapida-text-sm">Notificaciones</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Productos Preview */}
                 <ProductosPreview 
                   productos={productos}
                   onVerTodos={() => navigate("mis-productos")}
@@ -336,10 +322,7 @@ const Artesano = () => {
                   onEditarProducto={handleEditarProducto}
                 />
 
-                {/* Acciones rápidas */}
-                <AccionesRapidas onNavigate={navigate} />
-
-                {/* Modal para ver producto desde dashboard */}
+                {/* Modal para ver producto */}
                 <Modal show={showProductModal} onHide={() => setShowProductModal(false)} size="lg">
                   <Modal.Header closeButton>
                     <Modal.Title>Detalles del Producto</Modal.Title>
@@ -354,8 +337,8 @@ const Artesano = () => {
                           <p><strong>Descripción:</strong> {selectedProduct.descripcion}</p>
                           <p>
                             <strong>Estado:</strong> 
-                            <span className={`badge ${selectedProduct.activo !== false ? 'bg-success' : 'bg-secondary'} ms-2`}>
-                              {selectedProduct.activo !== false ? 'Disponible' : 'Agotado'}
+                            <span className={`badge ${selectedProduct.activo !== false && (selectedProduct.stock || 0) > 0 ? 'bg-success' : 'bg-secondary'} ms-2`}>
+                              {(selectedProduct.activo !== false && (selectedProduct.stock || 0) > 0) ? 'Disponible' : 'Agotado'}
                             </span>
                           </p>
                         </div>
@@ -370,9 +353,7 @@ const Artesano = () => {
                                     alt={`Producto ${idx + 1}`}
                                     className="img-fluid rounded"
                                     style={{ height: "80px", objectFit: "cover", width: "100%" }}
-                                    onError={(e) => {
-                                      e.target.style.display = 'none';
-                                    }}
+                                    onError={(e) => e.target.style.display = 'none'}
                                   />
                                 </div>
                               ))
@@ -403,7 +384,6 @@ const Artesano = () => {
             }
           />
           
-          {/* Subrutas */}
           <Route path="nuevo-producto" element={<CrearProducto />} />
           <Route path="mis-productos" element={<Products />} />
           <Route path="notificaciones" element={
